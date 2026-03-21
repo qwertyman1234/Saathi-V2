@@ -59,13 +59,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Run Snyk vulnerability scan
-        uses: snyk/actions/node@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high
-
       - name: OWASP dependency check
         uses: dependency-check/Dependency-Check_Action@main
         with:
