@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /profiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow admins to read and manage all profiles
+      allow read, write, delete: if isAdmin();
+    }
+
+    match /familyMembers/{docId} {
+      // Users can read and write their own family members
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Users can create family members for themselves
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Allow admins to read all
+      allow read: if isAdmin();
+    }
+
+    match /policies/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Allow admins to read all
+      allow read: if isAdmin();
+    }
+
+    match /claims/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Allow admins to read and update all claims
+      allow read, update: if isAdmin();
+    }
+
+    match /chatMessages/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /medicalHistory/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow admins to read all
+      allow read: if isAdmin();
+    }
+
+    match /userDocuments/{docId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    match /loginLogs/{docId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Allow admins to read all login logs for analytics
+      allow read: if isAdmin();
+    }
+
+    // Admin collections
+    match /plans/{docId} {
+      // Admins can read, create, update, delete
+      allow read, write: if isAdmin();
+      // Regular users can only read
+      allow read: if request.auth != null;
+    }
+
+    match /auditLogs/{docId} {
+      // Only admins can read and write audit logs
+      allow read, write: if isAdmin();
+    }
+
+    match /siteContent/{docId} {
+      // Admins can read, create, update, delete
+      allow read, write: if isAdmin();
+      // Regular users can only read
+      allow read: if request.auth != null;
+    }
+  }
+}
+

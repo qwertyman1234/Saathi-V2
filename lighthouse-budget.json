@@ -1,0 +1,72 @@
+{
+  "version": 1.1,
+  "extends": "lighthouse:default",
+  "settings": {
+    "onlyCategories": ["performance", "accessibility", "best-practices", "seo"],
+    "skipAudits": ["uses-webp-images"]
+  },
+  "budgets": [
+    {
+      "resourceType": "document",
+      "budgets": [
+        {
+          "metric": "first-contentful-paint",
+          "maximum": 1500
+        },
+        {
+          "metric": "largest-contentful-paint",
+          "maximum": 2500
+        },
+        {
+          "metric": "cumulative-layout-shift",
+          "maximum": 0.1
+        },
+        {
+          "metric": "total-blocking-time",
+          "maximum": 200
+        }
+      ]
+    },
+    {
+      "resourceType": "script",
+      "budgets": [
+        {
+          "metric": "size",
+          "maximum": 500,
+          "warning": 400
+        }
+      ]
+    },
+    {
+      "resourceType": "stylesheet",
+      "budgets": [
+        {
+          "metric": "size",
+          "maximum": 100,
+          "warning": 80
+        }
+      ]
+    },
+    {
+      "resourceType": "image",
+      "budgets": [
+        {
+          "metric": "size",
+          "maximum": 50,
+          "warning": 30
+        }
+      ]
+    }
+  ],
+  "groups": {
+    "budget-1": {
+      "title": "Critical Page Metrics",
+      "description": "Metrics that most impact user experience",
+      "auditRefs": [
+        { "id": "first-contentful-paint", "weight": 1 },
+        { "id": "largest-contentful-paint", "weight": 1 },
+        { "id": "cumulative-layout-shift", "weight": 1 }
+      ]
+    }
+  }
+}

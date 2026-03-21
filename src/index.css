@@ -1,0 +1,379 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 140 30% 96%;
+    --foreground: 150 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 150 40% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 40% 12%;
+
+    --primary: 150 55% 23%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 140 25% 92%;
+    --secondary-foreground: 150 40% 12%;
+
+    --muted: 140 15% 93%;
+    --muted-foreground: 150 10% 45%;
+
+    --accent: 145 55% 38%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 4 74% 57%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 40 90% 47%;
+    --warning-foreground: 0 0% 100%;
+
+    --success: 145 55% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --gold: 40 90% 47%;
+    --gold-foreground: 0 0% 100%;
+
+    --border: 140 20% 88%;
+    --input: 140 20% 88%;
+    --ring: 150 55% 23%;
+
+    --radius: 1rem;
+
+    --sidebar-background: 150 55% 16%;
+    --sidebar-foreground: 140 30% 96%;
+    --sidebar-primary: 145 55% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 150 40% 22%;
+    --sidebar-accent-foreground: 140 30% 96%;
+    --sidebar-border: 150 40% 20%;
+    --sidebar-ring: 145 55% 45%;
+
+    --chart-1: 150 55% 23%;
+    --chart-2: 145 55% 38%;
+    --chart-3: 40 90% 47%;
+    --chart-4: 4 74% 57%;
+    --chart-5: 140 25% 70%;
+  }
+
+  .dark {
+    --background: 150 40% 6%;
+    --foreground: 140 20% 95%;
+    --card: 150 35% 10%;
+    --card-foreground: 140 20% 95%;
+    --popover: 150 35% 10%;
+    --popover-foreground: 140 20% 95%;
+    --primary: 145 55% 45%;
+    --primary-foreground: 150 40% 6%;
+    --secondary: 150 25% 15%;
+    --secondary-foreground: 140 20% 95%;
+    --muted: 150 20% 15%;
+    --muted-foreground: 140 15% 60%;
+    --accent: 145 55% 38%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 74% 57%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 40 90% 47%;
+    --warning-foreground: 0 0% 100%;
+    --success: 145 55% 38%;
+    --success-foreground: 0 0% 100%;
+    --gold: 40 90% 47%;
+    --gold-foreground: 0 0% 100%;
+    --border: 150 25% 18%;
+    --input: 150 25% 18%;
+    --ring: 145 55% 45%;
+    --sidebar-background: 150 40% 8%;
+    --sidebar-foreground: 140 20% 95%;
+    --sidebar-primary: 145 55% 45%;
+    --sidebar-primary-foreground: 150 40% 6%;
+    --sidebar-accent: 150 30% 14%;
+    --sidebar-accent-foreground: 140 20% 95%;
+    --sidebar-border: 150 25% 15%;
+    --sidebar-ring: 145 55% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground text-base leading-relaxed;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl font-bold leading-tight;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl font-bold leading-tight;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl font-semibold leading-snug;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+  }
+
+  h4 {
+    @apply text-xl md:text-2xl font-semibold;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+  }
+
+  h5, h6 {
+    @apply text-lg font-semibold;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+  }
+
+  p {
+    @apply text-base leading-relaxed;
+    font-family: 'Inter', sans-serif;
+  }
+
+  button, input, textarea, select {
+    font-family: 'Inter', sans-serif;
+  }
+
+  code {
+    font-family: 'Fira Code', monospace;
+  }
+}
+
+@layer utilities {
+  .card-shadow {
+    box-shadow: 0 2px 8px -2px rgb(26 92 46 / 0.08), 0 1px 3px -1px rgb(26 92 46 / 0.06);
+  }
+  .card-shadow-hover {
+    box-shadow: 0 8px 24px -4px rgb(26 92 46 / 0.12), 0 4px 8px -2px rgb(26 92 46 / 0.06);
+  }
+  .green-glow {
+    box-shadow: 0 0 20px rgb(45 140 78 / 0.4), 0 0 40px rgb(45 140 78 / 0.2);
+  }
+  .gold-glow {
+    box-shadow: 0 0 16px rgb(240 165 0 / 0.35);
+  }
+  
+  /* Professional Font Utilities */
+  .font-display {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+  }
+  
+  .font-body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+  }
+
+  .font-mono {
+    font-family: 'Fira Code', monospace;
+  }
+
+  /* Responsive Text Utilities */
+  .text-heading-xl {
+    @apply text-5xl md:text-6xl font-bold leading-tight;
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .text-heading-lg {
+    @apply text-4xl md:text-5xl font-bold;
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .text-heading-md {
+    @apply text-3xl md:text-4xl font-bold;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .text-heading-sm {
+    @apply text-2xl md:text-3xl font-bold;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .text-body-lg {
+    @apply text-base md:text-lg leading-relaxed;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .text-body-md {
+    @apply text-base leading-relaxed;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .text-body-sm {
+    @apply text-sm leading-relaxed;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Responsive Spacing - Mobile First */
+  .space-responsive-md {
+    @apply gap-4 md:gap-6 lg:gap-8;
+  }
+
+  .space-responsive-lg {
+    @apply gap-6 md:gap-8 lg:gap-10;
+  }
+
+  .px-responsive {
+    @apply px-4 md:px-6 lg:px-8;
+  }
+
+  .py-responsive {
+    @apply py-4 md:py-6 lg:py-8;
+  }
+
+  .p-responsive {
+    @apply p-4 md:p-6 lg:p-8;
+  }
+
+  /* Grid Utilities for Mobile/Desktop */
+  .grid-auto-responsive {
+    @apply grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3;
+  }
+
+  .grid-auto-responsive-2 {
+    @apply grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2;
+  }
+
+  /* Alignment Utilities */
+  .center-content {
+    @apply flex items-center justify-center;
+  }
+
+  .center-flex {
+    @apply flex items-center justify-between;
+  }
+
+  .center-col {
+    @apply flex flex-col items-center justify-center gap-4;
+  }
+
+  /* Container Utilities */
+  .container-responsive {
+    @apply max-w-full px-4 md:px-6 lg:px-8 mx-auto;
+  }
+
+  .gradient {
+    background: linear-gradient(135deg, hsl(150 55% 23%), hsl(145 55% 38%));
+  }
+
+  .green-gradient {
+    background: linear-gradient(135deg, hsl(150 55% 23%), hsl(145 55% 38%));
+  }
+  .green-gradient-dark {
+    background: linear-gradient(135deg, hsl(150 55% 16%), hsl(150 55% 23%));
+  }
+  .mint-gradient {
+    background: linear-gradient(135deg, hsl(140 30% 96%), hsl(140 40% 92%));
+  }
+  
+  /* Responsive Container Sizes */
+  .container-sm {
+    @apply w-full max-w-2xl mx-auto px-4 md:px-6 lg:px-8;
+  }
+
+  .container-md {
+    @apply w-full max-w-4xl mx-auto px-4 md:px-6 lg:px-8;
+  }
+
+  .container-lg {
+    @apply w-full max-w-5xl mx-auto px-4 md:px-6 lg:px-8;
+  }
+
+  .container-xl {
+    @apply w-full max-w-6xl mx-auto px-4 md:px-6 lg:px-8;
+  }
+
+  /* Responsive Spacing for containers */
+  .space-y-responsive-sm {
+    @apply space-y-3 md:space-y-4 lg:space-y-5;
+  }
+
+  .space-y-responsive-md {
+    @apply space-y-4 md:space-y-6 lg:space-y-8;
+  }
+
+  .space-y-responsive-lg {
+    @apply space-y-6 md:space-y-8 lg:space-y-10;
+  }
+
+  /* Responsive Grid Spacing */
+  .gap-responsive-sm {
+    @apply gap-3 md:gap-4 lg:gap-5;
+  }
+
+  .gap-responsive-md {
+    @apply gap-4 md:gap-6 lg:gap-8;
+  }
+
+  .gap-responsive-lg {
+    @apply gap-6 md:gap-8 lg:gap-10;
+  }
+
+  /* Card Styles */
+  .dashboard-card {
+    @apply bg-white/80 backdrop-blur-sm border border-gray-200 hover:shadow-lg transition-all duration-300 rounded-xl;
+  }
+  .stat-card {
+    @apply bg-gradient-to-br from-white to-blue-50 border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 rounded-xl;
+  }
+
+  /* Button Responsive Sizes */
+  .btn-responsive {
+    @apply text-sm md:text-base px-3 md:px-4 py-2 md:py-2.5;
+  }
+
+  /* Input Responsive Sizes */
+  .input-responsive {
+    @apply text-sm md:text-base px-3 md:px-4 py-2 md:py-2.5;
+  }
+
+  /* Mobile Menu Fixes */
+  @media (max-width: 768px) {
+    main {
+      overflow-x: hidden;
+    }
+
+    .grid {
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    }
+  }
+
+  /* Text Truncation and Overflow */
+  .line-clamp-1 {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
