@@ -116,7 +116,7 @@ export async function extractPdfText(file: File): Promise<string> {
  */
 function extractReadableTextFromPDF(binaryData: string): string {
   // Remove PDF markers and extract text strings
-  let text = binaryData
+  const text = binaryData
     .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F]/g, " ") // Remove control characters
     .replace(/\n+/g, "\n"); // Normalize newlines
 
