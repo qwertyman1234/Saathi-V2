@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Check, Download, Star, Loader2, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
-import { insurancePlans } from "@/data/insurancePlans";
+import { useInsurancePlans } from "@/hooks/useInsurancePlans";
 import { toast } from "sonner";
 import { useRazorpayPayment } from "@/hooks/useRazorpayPayment";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +25,7 @@ const fadeVariants = {
 
 const StepReview = ({ planId, paid, onPay, onBack, onReset }: Props) => {
   const { user } = useAuth();
+  const { plans: insurancePlans } = useInsurancePlans();
   const [policyNumber, setPolicyNumber] = useState<string>("");
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 

@@ -43,6 +43,11 @@ const CostEstimator = () => {
   const activePolicies = policies.filter(p => p.status === "Active");
   const selectedPolicy = activePolicies.find(p => p.id === selectedPolicyId);
 
+  // Log when policies are loaded
+  useEffect(() => {
+    console.log("[CostEstimator] Policies loaded:", policies.length, "total, ", activePolicies.length, "active", activePolicies);
+  }, [policies]);
+
   // Generate AI cost insights when estimate is ready
   useEffect(() => {
     if (result && selectedPolicy) {
@@ -109,7 +114,7 @@ const CostEstimator = () => {
   };
 
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="max-w-5xl mx-auto w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">AI Pre-Hospitalization Cost Estimator</h1>
         <p className="text-muted-foreground mt-1 flex items-center gap-1">

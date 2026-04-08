@@ -202,11 +202,8 @@ const Onboarding = () => {
         email,
         dateOfBirth: dob,
         gender,
-        address,
         incomeRange: incomeBracket,
         occupation: employmentType,
-        healthAssessment, // Store health assessment
-        healthRiskScore, // Store risk score
         onboardingCompleted: true,
         onboardingStep: 9,
       });

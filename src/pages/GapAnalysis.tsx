@@ -107,7 +107,11 @@ const GapAnalysis = () => {
   };
 
   useEffect(() => {
+    console.log("[GapAnalysis] Policies loaded:", policies.length, "policies", policies);
+    console.log("[GapAnalysis] Members loaded:", members.length, "members");
+    console.log("[GapAnalysis] Profile loaded:", profile?.fullName);
     if (policies.length > 0 || members.length > 0 || profile) {
+      console.log("[GapAnalysis] Triggering analyzeGaps and getMarketInsight");
       analyzeGaps();
       getMarketInsight();
     }
@@ -125,7 +129,7 @@ const GapAnalysis = () => {
   }, [gaps.length]);
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl mx-auto w-full space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">AI Insurance Gap Analysis</h1>

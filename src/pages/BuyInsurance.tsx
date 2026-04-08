@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronRight } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import HealthInsuranceForm, { type HealthInsuranceFormData } from "@/components/buy-insurance/HealthInsuranceForm";
 import StepPreferences, { type Preferences } from "@/components/buy-insurance/StepPreferences";
@@ -8,9 +9,20 @@ import StepComparePlans from "@/components/buy-insurance/StepComparePlans";
 import StepReview from "@/components/buy-insurance/StepReview";
 
 const stepTitles = ["Your Profile", "Preferences", "Compare Plans", "Review & Buy"];
+const stepNames = ["profile", "preferences", "compare", "review"];
 
 const BuyInsurance = () => {
-  const [step, setStep] = useState(0);
+  const navigate = useNavigate();
+  const { step: paramStep } = useParams<{ step?: string }>();
+  
+  // Determine current step from URL or default to 0
+  const getCurrentStep = () => {
+    if (!paramStep) return 0;
+    const stepIndex = stepNames.indexOf(paramStep);
+    return stepIndex !== -1 ? stepIndex : 0;
+  };
+
+  const [step, setStep] = useState(getCurrentStep());
   const [selectedPlanId, setSelectedPlanId] = useState("");
   const [paid, setPaid] = useState(false);
   const [formData, setFormData] = useState<HealthInsuranceFormData | null>(null);
@@ -22,9 +34,21 @@ const BuyInsurance = () => {
     selectedFeatures: [],
   });
 
+  // Update step when URL param changes
+  useEffect(() => {
+    const newStep = getCurrentStep();
+    setStep(newStep);
+  }, [paramStep]);
+
+  // Navigate to step URL
+  const navigateToStep = (newStep: number) => {
+    setStep(newStep);
+    navigate(`/buy-insurance/${stepNames[newStep]}`);
+  };
+
   const handleProfileComplete = (data: HealthInsuranceFormData) => {
     setFormData(data);
-    setStep(1);
+    navigateToStep(1);
   };
 
   const handlePay = () => {
@@ -38,6 +62,7 @@ const BuyInsurance = () => {
     setSelectedPlanId("");
     setFormData(null);
     setPrefs({ maxPremium: 5000, minCoverage: 500000, maxPedWait: 4, selectedFeatures: [] });
+    navigate("/buy-insurance/profile");
   };
 
   return (
@@ -83,18 +108,19 @@ const BuyInsurance = () => {
 
       <AnimatePresence mode="wait">
         {step === 0 && (
-          <HealthInsuranceForm />
+          <HealthInsuranceForm onComplete={handleProfileComplete} />
         )}
         {step === 1 && (
-          <StepPreferences prefs={prefs} onUpdate={setPrefs} onNext={() => setStep(2)} onBack={() => setStep(0)} />
+          <StepPreferences prefs={prefs} onUpdate={setPrefs} onNext={() => navigateToStep(2)} onBack={() => navigateToStep(0)} />
         )}
         {step === 2 && (
           <StepComparePlans
             prefs={prefs}
+            formData={formData}
             selectedPlanId={selectedPlanId}
             onSelectPlan={setSelectedPlanId}
-            onNext={() => setStep(3)}
-            onBack={() => setStep(1)}
+            onNext={() => navigateToStep(3)}
+            onBack={() => navigateToStep(1)}
           />
         )}
         {step === 3 && (

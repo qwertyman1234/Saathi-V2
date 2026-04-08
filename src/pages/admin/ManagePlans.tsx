@@ -27,32 +27,33 @@ export default function ManagePlans() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<Partial<InsurancePlan>>({
-    name: "",
-    provider: "",
-    premium: 0,
-    coverage: 0,
-    maxAge: 65,
-    minAge: 18,
-    claimSettlementDays: 7,
-    rating: 4.5,
+    name: undefined,
+    provider: undefined,
+    premium: undefined,
+    coverage: undefined,
+    maxAge: undefined,
+    minAge: undefined,
+    claimSettlementDays: undefined,
+    rating: undefined,
     features: [],
     badges: [],
-    description: "",
+    description: undefined,
   });
 
   const handleAddClick = () => {
+    // Ensure form is completely fresh and empty
     setFormData({
-      name: "",
-      provider: "",
-      premium: 0,
-      coverage: 0,
-      maxAge: 65,
-      minAge: 18,
-      claimSettlementDays: 7,
-      rating: 4.5,
+      name: undefined,
+      provider: undefined,
+      premium: undefined,
+      coverage: undefined,
+      maxAge: undefined,
+      minAge: undefined,
+      claimSettlementDays: undefined,
+      rating: undefined,
       features: [],
       badges: [],
-      description: "",
+      description: undefined,
     });
     setEditingPlan(null);
     setIsAddDialogOpen(true);
@@ -198,6 +199,21 @@ export default function ManagePlans() {
         if (!open) {
           setIsAddDialogOpen(false);
           setIsEditDialogOpen(false);
+          // Clear form data when dialog closes
+          setFormData({
+            name: undefined,
+            provider: undefined,
+            premium: undefined,
+            coverage: undefined,
+            maxAge: undefined,
+            minAge: undefined,
+            claimSettlementDays: undefined,
+            rating: undefined,
+            features: [],
+            badges: [],
+            description: undefined,
+          });
+          setEditingPlan(null);
         }
       }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -215,7 +231,7 @@ export default function ManagePlans() {
                 id="name"
                 value={formData.name || ""}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Premium Health Cover"
+                placeholder="Enter plan name"
               />
             </div>
 
@@ -225,7 +241,7 @@ export default function ManagePlans() {
                 id="provider"
                 value={formData.provider || ""}
                 onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                placeholder="e.g., Max Healthcare"
+                placeholder="Enter provider name"
               />
             </div>
 
@@ -234,8 +250,9 @@ export default function ManagePlans() {
               <Input
                 id="premium"
                 type="number"
-                value={formData.premium || 0}
-                onChange={(e) => setFormData({ ...formData, premium: parseInt(e.target.value) })}
+                value={formData.premium || ""}
+                onChange={(e) => setFormData({ ...formData, premium: e.target.value ? parseInt(e.target.value) : 0 })}
+                placeholder="0"
               />
             </div>
 
@@ -244,8 +261,9 @@ export default function ManagePlans() {
               <Input
                 id="coverage"
                 type="number"
-                value={formData.coverage || 0}
-                onChange={(e) => setFormData({ ...formData, coverage: parseInt(e.target.value) })}
+                value={formData.coverage || ""}
+                onChange={(e) => setFormData({ ...formData, coverage: e.target.value ? parseInt(e.target.value) : 0 })}
+                placeholder="0"
               />
             </div>
 
@@ -254,8 +272,9 @@ export default function ManagePlans() {
               <Input
                 id="minAge"
                 type="number"
-                value={formData.minAge || 18}
-                onChange={(e) => setFormData({ ...formData, minAge: parseInt(e.target.value) })}
+                value={formData.minAge || ""}
+                onChange={(e) => setFormData({ ...formData, minAge: e.target.value ? parseInt(e.target.value) : 18 })}
+                placeholder="18"
               />
             </div>
 
@@ -264,8 +283,9 @@ export default function ManagePlans() {
               <Input
                 id="maxAge"
                 type="number"
-                value={formData.maxAge || 65}
-                onChange={(e) => setFormData({ ...formData, maxAge: parseInt(e.target.value) })}
+                value={formData.maxAge || ""}
+                onChange={(e) => setFormData({ ...formData, maxAge: e.target.value ? parseInt(e.target.value) : 65 })}
+                placeholder="65"
               />
             </div>
 
@@ -277,8 +297,9 @@ export default function ManagePlans() {
                 step="0.1"
                 min="0"
                 max="5"
-                value={formData.rating || 4.5}
-                onChange={(e) => setFormData({ ...formData, rating: parseFloat(e.target.value) })}
+                value={formData.rating || ""}
+                onChange={(e) => setFormData({ ...formData, rating: e.target.value ? parseFloat(e.target.value) : 4.5 })}
+                placeholder="4.5"
               />
             </div>
 
@@ -287,8 +308,9 @@ export default function ManagePlans() {
               <Input
                 id="settlementDays"
                 type="number"
-                value={formData.claimSettlementDays || 7}
-                onChange={(e) => setFormData({ ...formData, claimSettlementDays: parseInt(e.target.value) })}
+                value={formData.claimSettlementDays || ""}
+                onChange={(e) => setFormData({ ...formData, claimSettlementDays: e.target.value ? parseInt(e.target.value) : 7 })}
+                placeholder="7"
               />
             </div>
           </div>
@@ -300,7 +322,7 @@ export default function ManagePlans() {
                 id="description"
                 value={formData.description || ""}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Plan description..."
+                placeholder="Enter plan description"
                 rows={3}
               />
             </div>
@@ -311,18 +333,19 @@ export default function ManagePlans() {
                 id="features"
                 value={(formData.features || []).join(", ")}
                 onChange={(e) => setFormData({ ...formData, features: e.target.value.split(",").map(f => f.trim()) })}
-                placeholder="e.g., Pre-existing coverage, Family floater, Cashless claim"
+                placeholder="e.g., Hospitalization, Maternity, Critical Illness"
                 rows={2}
               />
             </div>
 
             <div>
               <Label htmlFor="badges">Badges (comma-separated)</Label>
-              <Input
+              <Textarea
                 id="badges"
                 value={(formData.badges || []).join(", ")}
                 onChange={(e) => setFormData({ ...formData, badges: e.target.value.split(",").map(b => b.trim()) })}
-                placeholder="e.g., Best Value, Top Rated"
+                placeholder="e.g., Best Value, Top Rated, Premium"
+                rows={2}
               />
             </div>
           </div>

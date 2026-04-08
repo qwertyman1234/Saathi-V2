@@ -504,7 +504,7 @@ const ClaimsTracker = () => {
 
   // Show skeleton loading only on initial data load
   if (loading && claimsList.length === 0) return (
-    <div className="max-w-6xl space-y-5">
+    <div className="max-w-6xl mx-auto w-full space-y-5">
       <div className="flex items-center gap-3 mb-6">
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
         <p className="text-muted-foreground">Loading your claims...</p>
@@ -519,7 +519,7 @@ const ClaimsTracker = () => {
   );
 
   return (
-    <div className="max-w-6xl space-y-5">
+    <div className="max-w-6xl mx-auto w-full space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

@@ -3,6 +3,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
@@ -27,6 +28,7 @@ export function AdminSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const [photoLoadError, setPhotoLoadError] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -38,6 +40,7 @@ export function AdminSidebar() {
   const email       = profile?.email    || user?.email       || "";
   const initials    = displayName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
   const photoURL    = profile?.photoURL || user?.photoURL    || "";
+  const showPhoto   = photoURL && !photoLoadError;
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -98,8 +101,13 @@ export function AdminSidebar() {
               <div className="space-y-1">
                 {/* User info */}
                 <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-sidebar-accent/20">
-                  {photoURL ? (
-                    <img src={photoURL} alt={displayName} className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-primary/20" />
+                  {showPhoto ? (
+                    <img 
+                      src={photoURL} 
+                      alt={displayName} 
+                      className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-primary/20"
+                      onError={() => setPhotoLoadError(true)}
+                    />
                   ) : (
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-xs font-bold">{initials}</span>

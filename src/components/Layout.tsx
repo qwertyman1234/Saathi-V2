@@ -1,10 +1,12 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 import { Shield } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
+      <OfflineIndicator />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
@@ -15,8 +17,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-display text-base md:text-lg font-bold text-foreground truncate">Health Insurance Saathi</span>
             </div>
           </header>
-          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto">
-            {children}
+          <main className="flex-1 p-4 md:p-6 lg:p-8 overflow-auto flex flex-col">
+            <div className="flex-1 w-full">{children}</div>
           </main>
           {/* Footer */}
           <footer className="green-gradient-dark text-primary-foreground py-6 md:py-8 px-4 md:px-6">

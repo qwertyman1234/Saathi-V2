@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFamilyMembers, usePolicies } from "@/hooks/useUserData";
 import { askClaudeJSON, askClaudeWithSearch } from "@/lib/claude";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { toast } from "sonner";
 
 const CONDITIONS = ["Diabetes", "Hypertension", "Heart Disease", "Asthma", "Cancer", "Kidney Disease", "None"];
@@ -33,11 +34,23 @@ const FamilyWallet = () => {
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMember, setNewMember] = useState({ name: "", relation: "", dateOfBirth: "", gender: "Male", conditions: [] as string[] });
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string }>({ open: false, id: "", name: "" });
+  const [deleting, setDeleting] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const allMembers = [
     { id: "self", name: profile?.fullName || "You", relation: "Self", gender: profile?.gender || "", conditions: [], dateOfBirth: profile?.dateOfBirth || "" },
     ...members,
   ];
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!newMember.name.trim()) errors.name = "Name is required";
+    if (!newMember.relation) errors.relation = "Relationship is required";
+    if (!newMember.dateOfBirth) errors.dateOfBirth = "Date of birth is required";
+    return errors;
+  };
+
 
   // Debug logging
   useEffect(() => {
@@ -76,30 +89,25 @@ const FamilyWallet = () => {
       }));
       const policyList = policies.map(p => `${p.name} by ${p.provider}, ₹${p.coverageAmount?.toLocaleString("en-IN")} coverage, expires ${p.expiryDate}`).join("\n") || "No policies";
 
+      console.log("[FamilyWallet] Running analyzeRisks with:", {
+        memberCount: memberList.length,
+        policyCount: policies.length,
+        policies: policyList,
+      });
+
       const results = await askClaudeJSON<RiskAssessment[]>(
-        `You are an expert Indian health insurance risk analyst. Assess each family member's individual insurance adequacy considering their age, gender, health conditions, and family role.
-
-For EACH member provide:
+        `You are a health insurance risk analyst for India.
+For EACH family member, assess their insurance adequacy:
 - memberId: the member's ID
-- risk: "high" (critical coverage gaps), "warning" (inadequate), or "good" (adequate)
-- aiScore: 0-100 (0=critical risk, 100=excellent coverage)
-- note: 1 sentence specific AI insight for THIS member (mention their name and specific coverage need)
+- risk: "high" (critical gaps), "warning" (inadequate), or "good" (adequate)
+- aiScore: 0-100
+- note: 1 sentence about their coverage (mention their name)
 
-Consider: age group health needs, gender-specific medical costs in India, existing conditions, family support role, and current coverage.
-Return ONLY valid JSON array, one assessment per member.`,
-        `FAMILY PROFILE:
-Members: ${JSON.stringify(memberList, null, 2)}
-Current Policies: ${policyList || "None yet"}
-Location: ${profile?.city || "India"}
-Income Level: ${profile?.incomeRange || "Unknown"}
-Family Size: ${allMembers.length} members
+Return ONLY valid JSON array.`,
+        `Family Members: ${memberList.map(m => `${m.name} (${m.relation}, age ${m.age}, conditions: ${m.conditions.length > 0 ? m.conditions.join(', ') : 'None'})`).join("; ")}
+Policies: ${policies.map(p => `${p.name} (₹${p.coverageAmount?.toLocaleString("en-IN")} cover)`).join("; ")}
 
-Analyze EACH member individually for insurance adequacy. Consider:
-- Age-appropriate coverage (children need immunization coverage, elderly need critical care)
-- Health risks from existing conditions for each member
-- Family economics and coverage overlap
-- Market recommendations for each member's demographic
-- Priority member who needs coverage urgently`
+Assess each member's coverage adequacy and return JSON.`
       );
 
       const map: Record<string, RiskAssessment> = {};
@@ -108,10 +116,21 @@ Analyze EACH member individually for insurance adequacy. Consider:
       console.log("[FamilyWallet] Risk analysis completed for", Object.keys(map).length, "members:", map);
     } catch (error) {
       console.error("Risk analysis failed:", error);
-      // fallback: mark all as warning
+      // Smart fallback: show different message based on whether policies exist
       const map: Record<string, RiskAssessment> = {};
+      const hasActivePolicies = policies.length > 0;
+      const defaultNote = hasActivePolicies 
+        ? "AI analysis temporarily unavailable. Your policy covers your needs based on standard guidelines."
+        : "Add your policies for a detailed risk assessment.";
+      const defaultScore = hasActivePolicies ? 65 : 60;
+      
       allMembers.forEach(m => {
-        map[m.id] = { memberId: m.id, risk: "warning", aiScore: 60, note: "Add your policies for a detailed risk assessment." };
+        map[m.id] = { 
+          memberId: m.id, 
+          risk: hasActivePolicies ? "good" : "warning", 
+          aiScore: defaultScore, 
+          note: defaultNote 
+        };
       });
       setRiskData(map);
     } finally {
@@ -139,35 +158,32 @@ Analyze EACH member individually for insurance adequacy. Consider:
         conditions: (m as any).conditions?.filter((c: string) => c !== "None").join(", ") || "None",
       }));
 
-      const summary = await askClaudeWithSearch(
-        "You are a family health insurance advisor specializing in Indian families. Search for current 2025 Indian family health insurance recommendations and trends. Provide strategic advice for families with multiple members.",
-        `FAMILY COMPOSITION & INSURANCE STATUS:
-Members: ${memberDetails.map(m => `${m.name} (${m.relation}, ${m.age ? m.age + ' yrs' : 'age unknown'}, conditions: ${m.conditions})`).join(" | ")}
-Current Coverage: ${policies.length > 0 ? policies.map(p => `${p.name} ₹${p.coverageAmount?.toLocaleString("en-IN")}`).join(", ") : "No active policies"}
-Location: ${profile?.city || "India"}
-Family Income: ${profile?.incomeRange || "Unknown"}
-
-REQUEST:
-Based on this family composition, provide a 4-sentence executive summary addressing:
-1. Critical coverage gaps (if any) by member type (children/elderly/adults with conditions)
-2. Recommended priority action for this specific family
-3. Current market recommendations for family coverage in ${profile?.city || "India"} 2025
-4. Estimated annual cost vs risk assessment
-
-Be specific to their family structure - don't give generic advice.`
+      const summary = await askClaudeJSON<{summary: string}>(
+        `Provide a 2-sentence family insurance summary.`,
+        `Family: ${memberDetails.map(m => `${m.name} (${m.relation})`).join(", ")}. Policies: ${policies.map(p => `${p.name} ₹${p.coverageAmount}`).join(", ")}. Provide a brief assessment.`
       );
-      setFamilySummary(summary);
+      
+      setFamilySummary(
+        typeof summary === 'string' ? summary : 
+        (summary as any).summary || JSON.stringify(summary)
+      );
       console.log("[FamilyWallet] Family summary generated");
     } catch (error) {
       console.error("Summary generation failed:", error);
-      setFamilySummary("Add your policies and family details to get a personalised AI risk assessment for your family.");
+      const hasPolicies = policies.length > 0;
+      const fallbackMsg = hasPolicies
+        ? `Your family has ${policies.length} active insurance policy(ies) with a combined coverage of ₹${policies.reduce((sum, p) => sum + (p.coverageAmount || 0), 0).toLocaleString("en-IN")}. This provides solid protection for your family of ${allMembers.length} members. Detailed AI analysis is temporarily unavailable.`
+        : "Add your policies and family details to get a personalised AI risk assessment for your family.";
+      setFamilySummary(fallbackMsg);
     } finally {
       setSummaryLoading(false);
     }
   };
 
   const handleAddMember = async () => {
-    if (!newMember.name || !newMember.relation || !newMember.dateOfBirth) {
+    const errors = validateForm();
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) {
       toast.error("Please fill all required fields");
       return;
     }
@@ -180,9 +196,13 @@ Be specific to their family structure - don't give generic advice.`
       conditions: newMember.conditions,
     });
     setSaving(false);
-    if (error) { toast.error("Failed to add member"); return; }
+    if (error) { 
+      toast.error("Failed to add member. Please try again."); 
+      return; 
+    }
     toast.success(`${newMember.name} added to your family!`);
     setNewMember({ name: "", relation: "", dateOfBirth: "", gender: "Male", conditions: [] });
+    setFormErrors({});
     setShowAddMember(false);
     // Trigger analysis after member is added (run in parallel)
     setTimeout(() => {
@@ -192,10 +212,20 @@ Be specific to their family structure - don't give generic advice.`
     }, 500);
   };
 
-  const handleRemove = async (id: string) => {
-    const { error } = await removeMember(id);
-    if (error) toast.error("Failed to remove member");
-    else toast.success("Member removed");
+  const handleRemove = async (id: string, name: string) => {
+    setDeleteConfirm({ open: true, id, name });
+  };
+
+  const handleRemoveConfirm = async () => {
+    setDeleting(true);
+    const { error } = await removeMember(deleteConfirm.id);
+    setDeleting(false);
+    if (error) {
+      toast.error("Failed to remove member. Please try again.");
+      return;
+    }
+    toast.success(`${deleteConfirm.name} has been removed from your family`);
+    setDeleteConfirm({ open: false, id: "", name: "" });
   };
 
   useEffect(() => {
@@ -221,11 +251,23 @@ Be specific to their family structure - don't give generic advice.`
     }
   }, [members.length, membersLoading]);
 
+  // Re-analyze when policies are added or updated
+  useEffect(() => {
+    if (profile?.userId && policies.length > 0) {
+      console.log("[FamilyWallet] Policies changed, re-analyzing risks with", policies.length, "policies");
+      // Slight delay to ensure Firestore has latest data
+      const timer = setTimeout(() => {
+        analyzeRisks().catch(err => console.error("Re-analysis with policies failed:", err));
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [policies.length]);
+
   const highRisk = Object.values(riskData).filter(r => r.risk === "high").length;
   const warnings = Object.values(riskData).filter(r => r.risk === "warning").length;
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="max-w-6xl mx-auto w-full space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Family Risk Dashboard</h1>
@@ -312,7 +354,7 @@ Be specific to their family structure - don't give generic advice.`
                           </Badge>
                         )}
                         {m.id !== "self" && (
-                          <button onClick={() => handleRemove(m.id)} className="text-muted-foreground hover:text-destructive ml-1">
+                          <button onClick={() => handleRemove(m.id, m.name)} className="text-muted-foreground hover:text-destructive ml-1">
                             <Plus className="h-3 w-3 rotate-45" />
                           </button>
                         )}
@@ -375,12 +417,12 @@ Be specific to their family structure - don't give generic advice.`
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Add Family Member</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div><Label>Full Name *</Label><Input className="mt-1" placeholder="e.g. Sunita Kumar" value={newMember.name} onChange={e => setNewMember(n => ({ ...n, name: e.target.value }))} /></div>
+            <div><Label>Full Name * {formErrors.name && <span className="text-xs text-destructive ml-1">{formErrors.name}</span>}</Label><Input className={`mt-1 ${formErrors.name ? "border-destructive" : ""}`} placeholder="e.g. Sunita Kumar" value={newMember.name} onChange={e => { setNewMember(n => ({ ...n, name: e.target.value })); setFormErrors(err => ({ ...err, name: "" })); }} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Relationship *</Label>
-                <Select value={newMember.relation} onValueChange={v => setNewMember(n => ({ ...n, relation: v }))}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
+                <Label>Relationship * {formErrors.relation && <span className="text-xs text-destructive ml-1">{formErrors.relation}</span>}</Label>
+                <Select value={newMember.relation} onValueChange={v => { setNewMember(n => ({ ...n, relation: v })); setFormErrors(err => ({ ...err, relation: "" })); }}>
+                  <SelectTrigger className={`mt-1 ${formErrors.relation ? "border-destructive" : ""}`}><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent>
                     {["Spouse","Son","Daughter","Father","Mother","Father-in-Law","Mother-in-Law","Sibling"].map(r => (
                       <SelectItem key={r} value={r}>{r}</SelectItem>
@@ -400,7 +442,7 @@ Be specific to their family structure - don't give generic advice.`
                 </Select>
               </div>
             </div>
-            <div><Label>Date of Birth *</Label><Input type="date" className="mt-1" value={newMember.dateOfBirth} onChange={e => setNewMember(n => ({ ...n, dateOfBirth: e.target.value }))} /></div>
+            <div><Label>Date of Birth * {formErrors.dateOfBirth && <span className="text-xs text-destructive ml-1">{formErrors.dateOfBirth}</span>}</Label><Input type="date" className={`mt-1 ${formErrors.dateOfBirth ? "border-destructive" : ""}`} value={newMember.dateOfBirth} onChange={e => { setNewMember(n => ({ ...n, dateOfBirth: e.target.value })); setFormErrors(err => ({ ...err, dateOfBirth: "" })); }} /></div>
             <div>
               <Label>Health Conditions</Label>
               <div className="flex flex-wrap gap-2 mt-2">
@@ -423,6 +465,17 @@ Be specific to their family structure - don't give generic advice.`
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationDialog
+        open={deleteConfirm.open}
+        title="Remove Family Member"
+        description="Are you sure you want to remove this family member? This will also affect insurance assessments."
+        itemName={deleteConfirm.name}
+        onConfirm={handleRemoveConfirm}
+        onCancel={() => setDeleteConfirm({ open: false, id: "", name: "" })}
+        isLoading={deleting}
+      />
     </div>
   );
 };

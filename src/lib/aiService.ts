@@ -42,7 +42,7 @@ async function openrouterAI(prompt: string, context: string): Promise<string> {
         "X-Title": "Health Insurance Saathi",
       },
       body: JSON.stringify({
-        model: "gpt-3.5-turbo",  // Free tier available
+        model: "openrouter/free",  // Dynamic free model routing
         messages: [
           { role: "system", content: context || "You are a helpful health insurance advisor." },
           { role: "user", content: prompt },
@@ -234,73 +234,25 @@ export async function askAI(
   context: string = "",
   preferredProvider?: AIProvider
 ): Promise<string> {
-  const providers: AIProvider[] = preferredProvider
-    ? [preferredProvider, "openrouter", "huggingface", "mistral", "groq", "together"]
-    : ["openrouter", "huggingface", "mistral", "groq", "together"];
-
-  const providerFunctions: Record<AIProvider, (p: string, c: string) => Promise<string>> = {
-    openrouter: openrouterAI,
-    huggingface: huggingfaceAI,
-    mistral: mistralAI,
-    groq: groqAI,
-    together: togetherAI,
-  };
-
-  const availableProviders: string[] = [];
-  
-  if (OPENROUTER_API_KEY) availableProviders.push("OpenRouter");
-  if (HUGGINGFACE_API_KEY) availableProviders.push("Hugging Face");
-  if (MISTRAL_API_KEY) availableProviders.push("Mistral");
-  if (GROQ_API_KEY) availableProviders.push("Groq");
-  if (TOGETHER_API_KEY) availableProviders.push("Together");
-
-  console.log("Available AI providers:", availableProviders);
-
-  for (const provider of providers) {
-    try {
-      if (provider === "openrouter" && !OPENROUTER_API_KEY) {
-        console.log("Skipping OpenRouter (no API key)");
-        continue;
-      }
-      if (provider === "huggingface" && !HUGGINGFACE_API_KEY) {
-        console.log("Skipping Hugging Face (no API key)");
-        continue;
-      }
-      if (provider === "mistral" && !MISTRAL_API_KEY) {
-        console.log("Skipping Mistral (no API key)");
-        continue;
-      }
-      if (provider === "groq" && !GROQ_API_KEY) {
-        console.log("Skipping Groq (no API key)");
-        continue;
-      }
-      if (provider === "together" && !TOGETHER_API_KEY) {
-        console.log("Skipping Together (no API key)");
-        continue;
-      }
-
-      console.log(`Trying ${provider}...`);
-      const result = await providerFunctions[provider](prompt, context);
-      
-      if (result && result.length > 0) {
-        console.log(`✓ Success with ${provider}`);
-        return result;
-      }
-      
-      console.log(`${provider} returned empty result`);
-    } catch (error) {
-      console.error(`✗ ${provider} failed:`, error);
-      continue;
-    }
+  // Only use OpenRouter (no fallbacks)
+  if (!OPENROUTER_API_KEY) {
+    throw new Error("OpenRouter API key not configured. Add VITE_OPENROUTER_KEY to .env");
   }
 
-  // Fallback if all fail
-  const errorMsg = availableProviders.length === 0
-    ? "No AI API key configured. Please add VITE_OPENROUTER_KEY or VITE_HF_API_KEY to .env file."
-    : `All AI providers failed (${availableProviders.join(", ")} tried). Please try again in a few moments.`;
-  
-  console.error(errorMsg);
-  throw new Error(errorMsg);
+  try {
+    console.log("Using OpenRouter...");
+    const result = await openrouterAI(prompt, context);
+    
+    if (result && result.length > 0) {
+      console.log("✓ OpenRouter succeeded");
+      return result;
+    }
+    
+    throw new Error("OpenRouter returned empty response");
+  } catch (error) {
+    console.error("✗ OpenRouter failed:", error);
+    throw error;
+  }
 }
 
 /**
@@ -312,8 +264,8 @@ export async function analyzeGaps(
   age: number,
   familySize: number
 ): Promise<string> {
-  const context = `You are an Indian health insurance expert. Provide gap analysis recommendations.`;
-  const prompt = `My existing coverage includes: ${existingCoverage.join(", ")}. I'm ${age} years old with a family of ${familySize}. What coverage gaps should I address?`;
+  const context = `You're a health insurance advisor. Spot coverage gaps quickly and give practical advice.`;
+  const prompt = `I have: ${existingCoverage.join(", ")}. I'm ${age}, family of ${familySize}. What coverage gaps should I fix? (Keep it to 3 key points)`;
   return askAI(prompt, context);
 }
 
@@ -321,8 +273,8 @@ export async function compareInsurancePlans(
   plan1: any,
   plan2: any
 ): Promise<string> {
-  const context = `You are an insurance comparison expert. Provide clear, concise comparisons.`;
-  const prompt = `Compare these two plans:\n\nPlan 1: ${JSON.stringify(plan1)}\n\nPlan 2: ${JSON.stringify(plan2)}\n\nProvide a brief comparison highlighting pros and cons.`;
+  const context = `Compare plans honestly. Be brief. Highlight key differences only.`;
+  const prompt = `Compare Plan 1 vs Plan 2. What's better? (3-4 sentence max)\n\nPlan 1: ${JSON.stringify(plan1)}\n\nPlan 2: ${JSON.stringify(plan2)}`;
   return askAI(prompt, context);
 }
 
@@ -330,8 +282,8 @@ export async function estimateClaimOutcome(
   claimDetails: string,
   policyDetails: string
 ): Promise<string> {
-  const context = `You are an insurance claim assessment expert. Provide realistic predictions based on policy terms.`;
-  const prompt = `Claim Details: ${claimDetails}\n\nPolicy Details: ${policyDetails}\n\nWhat is the likely claim outcome?`;
+  const context = `Assess the claim. Be realistic. Keep it short.`;
+  const prompt = `Likely outcome for this claim? Will it be approved or denied?\n\nClaim: ${claimDetails}\n\nPolicy: ${policyDetails}`;
   return askAI(prompt, context);
 }
 
@@ -340,22 +292,22 @@ export async function generateCostInsights(
   coverageAmounts: number[],
   age: number
 ): Promise<string> {
-  const context = `You are a health insurance cost analyst. Provide practical financial insights.`;
-  const prompt = `My premiums: ${premiums.join(", ")}, Coverages: ${coverageAmounts.join(", ")}, Age: ${age}. Give cost optimization suggestions.`;
+  const context = `Give money-smart advice. Be practical and brief.`;
+  const prompt = `Premiums: ${premiums.join(", ")}, Coverage: ${coverageAmounts.join(", ")}, Age: ${age}. How can I save money? (2-3 tips max)`;
   return askAI(prompt, context);
 }
 
 export async function generateHealthTips(
   userProfile: { age: number; gender: string; conditions?: string[] }
 ): Promise<string> {
-  const context = `You are a health and wellness advisor. Provide practical, evidence-based health tips.`;
-  const prompt = `Person: ${userProfile.age}yo ${userProfile.gender}${userProfile.conditions ? ` with ${userProfile.conditions.join(", ")}` : ""}. Give 3 health tips.`;
+  const context = `Give quick, practical health tips. No fluff.`;
+  const prompt = `${userProfile.age}yo ${userProfile.gender}${userProfile.conditions ? ` with ${userProfile.conditions.join(", ")}` : ""}. Give me 2-3 health tips I can actually use.`;
   return askAI(prompt, context);
 }
 
 export async function explainPolicyTerm(term: string, context?: string): Promise<string> {
-  const systemContext = `You are an expert at explaining insurance terms in simple, non-technical language.`;
-  const prompt = `Explain this insurance term in simple terms: "${term}"${context ? ` in the context of: ${context}` : ""}.`;
+  const systemContext = `Explain insurance terms simply. Like you're talking to a friend. Keep it to 1-2 sentences.`;
+  const prompt = `What does "${term}" mean?${context ? ` (Think: ${context})` : ""}`;
   return askAI(prompt, systemContext);
 }
 
@@ -365,29 +317,15 @@ export async function explainPolicyTerm(term: string, context?: string): Promise
  * that insurance companies often hide in fine print or complex language.
  */
 export async function revealHiddenInsuranceThings(policyDetails: any): Promise<string> {
-  const context = `You are an expert health insurance transparency analyst who specializes in revealing hidden restrictions, unfavorable terms, and fine print that insurance companies want customers to miss. Your goal is to help people understand what they're REALLY getting (and NOT getting).
-
-Be specific, practical, and highlight:
-1. Hidden Restrictions: Coverage limits, sub-limits, caps that apply to specific treatments
-2. Exclusions: What's NOT covered (pre-existing conditions, cosmetic, experimental treatments, etc.)
-3. Waiting Periods: Initial waiting periods, specific waiting periods for certain diseases
-4. Common Rejection Reasons: How claims get rejected under this policy
-5. What's Missing: Important coverages that seem missing
-6. Unfavorable Terms: Co-pays, deductibles, co-insurance percentages that hurt patients
-7. Network Restrictions: Hospital network limitations
-8. Claim Process Red Flags: Complex claim processes or strict documentation requirements
-
-Format your response with clear sections using markdown headers and bullet points.`;
+  const context = `You're a straight-talking insurance expert. Reveal the real deal - what's hidden, what's not covered, and the gotchas. Be direct, not formal. Keep it brief (3-4 main points max).`;
 
   const policyStr = typeof policyDetails === 'string' 
     ? policyDetails 
     : JSON.stringify(policyDetails, null, 2);
 
-  const prompt = `Analyze this insurance policy and REVEAL all the hidden things that insurance companies don't want customers to know:
+  const prompt = `What's the catch with this policy? Any hidden limits, exclusions, or waiting periods I should know about?
 
-${policyStr}
-
-Be brutally honest about what's actually covered vs what sounds good in marketing. Include specific percentages, limits, and conditions. Help the customer understand the REAL deal with this policy.`;
+${policyStr}`;
 
   return askAI(prompt, context);
 }
@@ -396,27 +334,18 @@ Be brutally honest about what's actually covered vs what sounds good in marketin
  * Compare hidden things between two policies
  */
 export async function compareHiddenThings(plan1: any, plan2: any): Promise<string> {
-  const context = `You are an insurance transparency expert. Compare the hidden restrictions, exclusions, and unfavorable terms between two policies. Help people understand which is MORE transparent and which has HIDDEN gotchas.`;
+  const context = `Compare two policies. Tell which is more transparent and which has more hidden gotchas. Keep it brief and honest.`;
 
   const plan1Str = typeof plan1 === 'string' ? plan1 : JSON.stringify(plan1, null, 2);
   const plan2Str = typeof plan2 === 'string' ? plan2 : JSON.stringify(plan2, null, 2);
 
-  const prompt = `Compare these two plans and reveal the hidden things in each:
+  const prompt = `Which is better - Plan 1 or Plan 2? What hidden issues does each have?
 
 PLAN 1:
 ${plan1Str}
 
 PLAN 2:
-${plan2Str}
-
-For each plan, identify:
-- Hidden restrictions and limits
-- Exclusions and what's NOT covered
-- Waiting periods and conditions
-- Unfavorable terms
-- Which plan is MORE transparent with fewer hidden gotchas
-
-Format clearly with Plan 1 and Plan 2 sections.`;
+${plan2Str}`;
 
   return askAI(prompt, context);
 }

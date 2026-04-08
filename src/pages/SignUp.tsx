@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { getUserFriendlyError } from "@/lib/errorMessages";
 import { toast } from "sonner";
 
 export default function SignUp() {
@@ -26,14 +27,20 @@ export default function SignUp() {
     setLoading(true);
     const { error } = await signUp(form.email, form.password, form.fullName, form.phone);
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) { 
+      toast.error(getUserFriendlyError(error)); 
+      return; 
+    }
     setDone(true);
   };
 
   const handleGoogle = async () => {
     setGoogleLoading(true);
     const { error } = await signInWithGoogle();
-    if (error) { toast.error(error.message); setGoogleLoading(false); }
+    if (error) { 
+      toast.error(getUserFriendlyError(error)); 
+      setGoogleLoading(false); 
+    }
   };
 
   if (done) return (

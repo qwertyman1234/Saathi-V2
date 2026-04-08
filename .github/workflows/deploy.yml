@@ -54,7 +54,7 @@ jobs:
         with:
           files: ./coverage/coverage-final.json
           flags: unittests
-          Name: codecov-umbrella
+          name: codecov-umbrella
 
   # Security scanning
   security:
@@ -167,12 +167,11 @@ jobs:
           path: dist/
 
       - name: Deploy to Vercel (Staging)
-        uses: vercel/actions/deploy-production@master
+        uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
-          scope: ${{ secrets.VERCEL_ORG_ID }}
 
       - name: Deploy Supabase functions (Staging)
         run: |
@@ -209,14 +208,13 @@ jobs:
           path: dist/
 
       - name: Deploy to Vercel (Production)
-        uses: vercel/actions/deploy-production@master
+        uses: amondnet/vercel-action@v25
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          scope: ${{ secrets.VERCEL_ORG_ID }}
 
       - name: Run database migrations
         run: |
@@ -235,10 +233,15 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
       - name: Send deployment notification
-        uses: 8398a7/action-slack@v4
+        uses: slackapi/slack-github-action@v1.24.0
         with:
-          status: ${{ job.status }}
-          text: 'Production deployment ${{ job.status }}'
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          payload: |
+            {
+              "text": "Production deployment ${{ job.status }}",
+              "status": "${{ job.status }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
         if: always()
 

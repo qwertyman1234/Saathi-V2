@@ -11,29 +11,8 @@ import { usePolicies } from "@/hooks/useUserData";
 import { askClaude, askClaudeWithSearch, askClaudeJSON } from "@/lib/claude";
 import ReactMarkdown from "react-markdown";
 import { RevealHiddenThings } from "@/components/RevealHiddenThings";
-import { insurancePlans } from "@/data/insurancePlans";
+import { useInsurancePlans } from "@/hooks/useInsurancePlans";
 
-// Transform insurancePlans data to market policy format
-const MARKET_POLICIES = insurancePlans.map((plan, idx) => ({
-  id: `m${idx + 1}`,
-  name: plan.name,
-  insurer: plan.insurer,
-  premium: `₹${(plan.premium * 12).toLocaleString("en-IN")}/yr`,
-  coverage: `₹${(plan.coverage / 100000).toFixed(1)}L`,
-  hospitals: "10,000+",
-  waiting: plan.pedWait === 0 ? "Zero" : `${plan.pedWait} yrs`,
-  details: {
-    roomRent: "Varies",
-    subLimits: "Minimal",
-    coPay: "0-10%",
-    restoration: `${plan.features.includes("Restore Benefit") ? "100%" : "Partial"}`,
-    ncb: "10-50%",
-    ayush: plan.features.includes("AYUSH") ? "Yes" : "No",
-    maternity: plan.features.includes("Maternity") ? "Covered" : "Extra",
-    pedWaiting: `${plan.pedWait} yrs`,
-    claimSettlement: `${plan.claimRatio}%`,
-  },
-}));
 
 const FIELDS = [
   { key: "roomRent", label: "Room Rent" },
@@ -50,6 +29,7 @@ const FIELDS = [
 const ComparePolicies = () => {
   const { profile } = useAuth();
   const { policies: userPolicies } = usePolicies();
+  const { plans: insurancePlans } = useInsurancePlans();
   const [selected, setSelected] = useState<string[]>([]);
   const [aiVerdict, setAiVerdict] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -79,8 +59,35 @@ const ComparePolicies = () => {
     isUserPolicy: true,
   }));
 
+  // Transform insurancePlans data to market policy format
+  const MARKET_POLICIES = insurancePlans.map((plan, idx) => ({
+    id: `m${idx + 1}`,
+    name: plan.name,
+    insurer: plan.insurer,
+    premium: `₹${(plan.premium * 12).toLocaleString("en-IN")}/yr`,
+    coverage: `₹${(plan.coverage / 100000).toFixed(1)}L`,
+    hospitals: "10,000+",
+    waiting: plan.pedWait === 0 ? "Zero" : `${plan.pedWait} yrs`,
+    details: {
+      roomRent: "Varies",
+      subLimits: "Minimal",
+      coPay: "0-10%",
+      restoration: `${plan.features.includes("Restore Benefit") ? "100%" : "Partial"}`,
+      ncb: "10-50%",
+      ayush: plan.features.includes("AYUSH") ? "Yes" : "No",
+      maternity: plan.features.includes("Maternity") ? "Covered" : "Extra",
+      pedWaiting: `${plan.pedWait} yrs`,
+      claimSettlement: `${plan.claimRatio}%`,
+    },
+  }));
+
   const allPolicies = [...userPolicyCards, ...MARKET_POLICIES];
   const selectedPolicies = allPolicies.filter(p => selected.includes(p.id));
+
+  // Log when policies are loaded
+  useEffect(() => {
+    console.log("[ComparePolicies] User policies loaded:", userPolicies.length, "policies", userPolicies);
+  }, [userPolicies.length]);
 
   const toggle = (id: string) => {
     setSelected(prev =>
@@ -169,23 +176,27 @@ const ComparePolicies = () => {
   };
 
   return (
-    <div className="max-w-6xl space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Compare Policies</h1>
-          <p className="text-muted-foreground mt-1 flex items-center gap-1">
-            <Globe className="h-4 w-4 text-primary" /> Compare your policies + market plans with live AI data
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setShowSearch(true)} className="gap-2">
+    <div className="max-w-6xl mx-auto w-full space-y-8">
+      <div>
+        <div className="text-sm font-medium tracking-widest text-emerald-700 dark:text-emerald-200 mb-3">01 / COMPARE</div>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Compare Policies</h1>
+            <p className="text-muted-foreground mt-2 flex items-center gap-2">
+              <Globe className="h-4 w-4 text-emerald-700 dark:text-emerald-300" /> Side-by-side comparison with live market data and AI insights
+            </p>
+          </div>
+        <Button variant="outline" size="sm" onClick={() => setShowSearch(true)} className="gap-2 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border-emerald-200/30">
           <Globe className="h-4 w-4" /> Search Any Policy
         </Button>
+      </div>
+
       </div>
 
       {/* Your policies section */}
       {userPolicyCards.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Your Policies</h2>
+          <div className="text-xs font-medium tracking-widest text-emerald-700/60 dark:text-emerald-200/60 mb-4">YOUR POLICIES</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {userPolicyCards.map(p => {
               const isSel = selected.includes(p.id);
@@ -213,7 +224,7 @@ const ComparePolicies = () => {
 
       {/* Market policies */}
       <div>
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Market Plans</h2>
+        <div className="text-xs font-medium tracking-widest text-emerald-700/60 dark:text-emerald-200/60 mb-4">MARKET PLANS</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {MARKET_POLICIES.map(p => {
             const isSel = selected.includes(p.id);

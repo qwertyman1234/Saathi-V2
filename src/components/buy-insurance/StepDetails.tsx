@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { pedConditions } from "@/data/insurancePlans";
+import { useInsurancePlans } from "@/hooks/useInsurancePlans";
 
 export interface DetailsForm {
   age: string;

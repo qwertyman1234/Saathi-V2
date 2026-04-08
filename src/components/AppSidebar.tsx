@@ -1,10 +1,11 @@
 import {
   LayoutDashboard, FileText, GitCompare, Wallet, MapPin,
   Search, Calculator, CheckCircle, BookOpen, MessageCircle,
-  ShoppingBag, Leaf, LogOut, User, Settings, Shield,
+  ShoppingBag, Leaf, LogOut, User, Settings, Shield, Vault,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,
@@ -17,6 +18,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 const navItems = [
   { title: "Dashboard",        url: "/dashboard", icon: LayoutDashboard },
   { title: "Claims Tracker",   url: "/claims",    icon: FileText },
+  { title: "Document Vault",   url: "/vault",     icon: Vault },
   { title: "Compare Policies", url: "/compare",   icon: GitCompare },
   { title: "Family Wallet",    url: "/family",    icon: Wallet },
   { title: "Hyperlocal Search",url: "/search",    icon: MapPin },
@@ -25,7 +27,7 @@ const navItems = [
   { title: "Check Claim",      url: "/check",     icon: CheckCircle },
   { title: "Explain Policy",   url: "/explain",   icon: BookOpen },
   { title: "Chat Assistant",   url: "/chat",      icon: MessageCircle },
-  { title: "Buy Insurance",    url: "/buy",       icon: ShoppingBag },
+  { title: "Buy Insurance",    url: "/buy-insurance/profile",       icon: ShoppingBag },
 ];
 
 export function AppSidebar() {
@@ -34,6 +36,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const [photoLoadError, setPhotoLoadError] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -45,6 +48,7 @@ export function AppSidebar() {
   const email       = profile?.email    || user?.email       || "";
   const initials    = displayName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
   const photoURL    = profile?.photoURL || user?.photoURL    || "";
+  const showPhoto   = photoURL && !photoLoadError; // Only show photo if URL exists AND hasn't failed to load
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar-background">
@@ -124,8 +128,13 @@ export function AppSidebar() {
               <NavLink to="/profile"
                 className="flex items-center gap-2 md:gap-3 px-2.5 md:px-3 py-2 md:py-2.5 rounded-lg hover:bg-sidebar-accent transition-colors cursor-pointer group"
                 activeClassName="bg-sidebar-accent">
-                {photoURL ? (
-                  <img src={photoURL} alt={displayName} className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all" />
+                {showPhoto ? (
+                  <img 
+                    src={photoURL} 
+                    alt={displayName} 
+                    className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all" 
+                    onError={() => setPhotoLoadError(true)}
+                  />
                 ) : (
                   <div className="w-8 h-8 md:w-9 md:h-9 rounded-full green-gradient flex items-center justify-center flex-shrink-0 text-xs md:text-sm font-bold text-primary-foreground group-hover:shadow-lg transition-shadow">
                     {initials}
@@ -155,8 +164,13 @@ export function AppSidebar() {
               <NavLink to="/profile" title={displayName}
                 className="w-full flex items-center justify-center p-2 md:p-2.5 rounded-lg text-sidebar-foreground/60 hover:bg-sidebar-accent transition-colors group"
                 activeClassName="bg-sidebar-accent text-sidebar-foreground">
-                {photoURL ? (
-                  <img src={photoURL} alt={displayName} className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all" />
+                {showPhoto ? (
+                  <img 
+                    src={photoURL} 
+                    alt={displayName} 
+                    className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/40 transition-all" 
+                    onError={() => setPhotoLoadError(true)}
+                  />
                 ) : (
                   <div className="w-7 h-7 md:w-8 md:h-8 rounded-full green-gradient flex items-center justify-center text-xs font-bold text-primary-foreground group-hover:shadow-lg transition-shadow">
                     {initials}

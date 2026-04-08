@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Layout } from "@/components/Layout";
 import { AdminLayout } from "@/components/AdminLayout";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { VaultProvider } from "@/contexts/VaultContext";
 import { Loader2, Shield } from "lucide-react";
 import { isAdmin } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ import CheckClaim from "./pages/CheckClaim";
 import ExplainPolicy from "./pages/ExplainPolicy";
 import ChatAssistant from "./pages/ChatAssistant";
 import BuyInsurance from "./pages/BuyInsurance";
+import InsuranceVault from "./pages/InsuranceVault";
 import UserProfile from "./pages/UserProfile";
 import NotFound from "./pages/NotFound";
 import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
@@ -122,8 +124,10 @@ function AppRoutes() {
       <Route path="/check"     element={<RequireOnboarding><Layout><CheckClaim /></Layout></RequireOnboarding>} />
       <Route path="/explain"   element={<RequireOnboarding><Layout><ExplainPolicy /></Layout></RequireOnboarding>} />
       <Route path="/chat"      element={<RequireOnboarding><Layout><ChatAssistant /></Layout></RequireOnboarding>} />
-      <Route path="/buy"       element={<RequireOnboarding><Layout><BuyInsurance /></Layout></RequireOnboarding>} />
+      <Route path="/buy-insurance" element={<RequireAuth><Layout><BuyInsurance /></Layout></RequireAuth>} />
+      <Route path="/buy-insurance/:step" element={<RequireAuth><Layout><BuyInsurance /></Layout></RequireAuth>} />
       <Route path="/profile"   element={<RequireOnboarding><Layout><UserProfile /></Layout></RequireOnboarding>} />
+      <Route path="/vault"     element={<RequireAuth><Layout><InsuranceVault /></Layout></RequireAuth>} />
 
       {/* Admin routes */}
       <Route path="/admin/*" element={<RequireAdmin><AdminRoutes /></RequireAdmin>} />
@@ -182,9 +186,11 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
-          <AppRoutes />
+          <VaultProvider>
+            <AppRoutes />
+          </VaultProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { getUserFriendlyError } from "@/lib/errorMessages";
 import { toast } from "sonner";
 
 // ── Shared left panel ─────────────────────────────────────────────────────────
@@ -79,14 +80,7 @@ function LoginForm({ onForgot }: { onForgot: (prefill: string) => void }) {
     const { error } = await signIn(email, password);
     setLoading(false);
     if (error) {
-      // Give friendly Firebase error messages
-      const msg =
-        error.code === "auth/user-not-found"    ? "No account found with this email." :
-        error.code === "auth/wrong-password"     ? "Incorrect password. Try again or reset it." :
-        error.code === "auth/invalid-credential" ? "Incorrect email or password." :
-        error.code === "auth/too-many-requests"  ? "Too many attempts. Please wait a few minutes." :
-        error.message;
-      toast.error(msg);
+      toast.error(getUserFriendlyError(error));
       return;
     }
     toast.success("Welcome back!");
@@ -96,7 +90,10 @@ function LoginForm({ onForgot }: { onForgot: (prefill: string) => void }) {
   const handleGoogle = async () => {
     setGoogle(true);
     const { error } = await signInWithGoogle();
-    if (error) { toast.error(error.message); setGoogle(false); }
+    if (error) { 
+      toast.error(getUserFriendlyError(error)); 
+      setGoogle(false); 
+    }
   };
 
   return (

@@ -4,6 +4,7 @@ import { Slider } from "@/components/ui/slider";
 import { ChevronRight, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { priorityFeatures } from "@/data/insurancePlans";
+import { useInsurancePlans } from "@/hooks/useInsurancePlans";
 
 export interface Preferences {
   maxPremium: number;

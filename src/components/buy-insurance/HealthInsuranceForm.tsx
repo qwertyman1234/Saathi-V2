@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronRight, ChevronLeft, AlertCircle, Info, CheckCircle, Loader2 } from "lucide-react";
+import { Check, ChevronRight, ChevronLeft, AlertCircle, Info, CheckCircle, Loader2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { AutofillDialog } from "./AutofillDialog";
+import { useVault } from "@/contexts/VaultContext";
 
 // Form data interface
 export interface HealthInsuranceFormData {
@@ -47,6 +49,10 @@ export interface HealthInsuranceFormData {
   timestamp: string;
 }
 
+interface HealthInsuranceFormProps {
+  onComplete?: (data: HealthInsuranceFormData) => void;
+}
+
 const STORAGE_KEY = "healthInsuranceFormData";
 const PRE_EXISTING_CONDITIONS = [
   "Diabetes",
@@ -68,11 +74,13 @@ const fadeInUp = {
   exit: { opacity: 0, y: -20 },
 };
 
-const HealthInsuranceForm = () => {
+const HealthInsuranceForm = ({ onComplete }: HealthInsuranceFormProps = {}) => {
   const navigate = useNavigate();
+  const vault = useVault();
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showAutofillDialog, setShowAutofillDialog] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState<HealthInsuranceFormData>({
@@ -233,10 +241,17 @@ const HealthInsuranceForm = () => {
       setShowConfirmation(true);
       toast.success("Form submitted successfully!");
 
-      // Redirect after 2 seconds
-      setTimeout(() => {
-        navigate("/buy-insurance/preferences");
-      }, 2000);
+      // Call onComplete callback if provided, otherwise navigate
+      if (onComplete) {
+        setTimeout(() => {
+          onComplete(formData);
+        }, 1000);
+      } else {
+        // Redirect after 2 seconds (for standalone usage)
+        setTimeout(() => {
+          navigate("/buy-insurance/preferences");
+        }, 2000);
+      }
     } catch (error) {
       console.error("Error submitting form:", error);
       toast.error("Failed to submit form. Please try again.");
@@ -250,6 +265,27 @@ const HealthInsuranceForm = () => {
       ? formData.preExistingConditions.filter(c => c !== condition)
       : [...formData.preExistingConditions, condition];
     updateFormData("preExistingConditions", updated);
+  };
+
+  const handleAutofill = (autofillData: any) => {
+    // Auto-fill form with selected family member's data
+    const updated: HealthInsuranceFormData = {
+      ...formData,
+      firstName: autofillData.firstName || formData.firstName,
+      lastName: autofillData.lastName || formData.lastName,
+      email: autofillData.email || formData.email,
+      phone: autofillData.phone || formData.phone,
+      dateOfBirth: autofillData.dateOfBirth || '',
+      gender: autofillData.gender || formData.gender,
+      city: autofillData.address?.city || autofillData.city || formData.city,
+      age: autofillData.dateOfBirth 
+        ? String(new Date().getFullYear() - new Date(autofillData.dateOfBirth).getFullYear())
+        : formData.age,
+    };
+    
+    setFormData(updated);
+    saveFormData(updated);
+    toast.success("Form filled with selected family member data!");
   };
 
   const stepTitles = [
@@ -322,6 +358,23 @@ const HealthInsuranceForm = () => {
               {/* Step 1: Contact & Personal Information */}
               {step === 0 && (
                 <div className="space-y-6">
+                  {/* Autofill Button */}
+                  {vault.familyMembers.length > 0 && (
+                    <div className="mb-4">
+                      <Button
+                        onClick={() => setShowAutofillDialog(true)}
+                        variant="outline"
+                        className="w-full sm:w-auto border-green-300 text-green-700 hover:bg-green-50"
+                      >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Autofill from Vault
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {vault.familyMembers.length} family member{vault.familyMembers.length > 1 ? 's' : ''} found
+                      </p>
+                    </div>
+                  )}
+
                   <div>
                     <div className="flex items-start gap-3 mb-5 p-4 bg-blue-50 rounded-lg border border-blue-200">
                       <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
@@ -1170,6 +1223,15 @@ const HealthInsuranceForm = () => {
           .form-card { padding: 1rem; }
         }
       `}</style>
+
+      {/* Autofill Dialog */}
+      <AutofillDialog
+        open={showAutofillDialog}
+        onOpenChange={setShowAutofillDialog}
+        onSelectMember={(member, autofillData) => {
+          handleAutofill(autofillData);
+        }}
+      />
     </div>
   );
 };

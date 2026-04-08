@@ -3,22 +3,33 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Star, Check, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Star, Check, Sparkles, Loader2, Users, User, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
-import { insurancePlans, type InsurancePlan } from "@/data/insurancePlans";
+import { type InsurancePlan } from "@/data/insurancePlans";
+import { useInsurancePlans } from "@/hooks/useInsurancePlans";
 import type { Preferences } from "./StepPreferences";
+import type { HealthInsuranceFormData } from "./HealthInsuranceForm";
 import { askClaudeJSON } from "@/lib/claude";
 import ReactMarkdown from "react-markdown";
 
 interface Props {
   prefs: Preferences;
+  formData: HealthInsuranceFormData | null;
   selectedPlanId: string;
   onSelectPlan: (id: string) => void;
   onNext: () => void;
   onBack: () => void;
 }
 
-type SortKey = "premium" | "coverage" | "rating" | "claimRatio" | "ai";
+type SortKey = "premium" | "coverage" | "rating" | "claimRatio" | "ai" | "health";
+
+interface HealthRecommendation {
+  ranking: string[];
+  verdict: string;
+  planType: "family" | "individual";
+  typeReason: string;
+  healthFocus: string;
+}
 
 const fadeVariants = {
   initial: { opacity: 0, x: 40 },
@@ -26,11 +37,14 @@ const fadeVariants = {
   exit: { opacity: 0, x: -40 },
 };
 
-const StepComparePlans = ({ prefs, selectedPlanId, onSelectPlan, onNext, onBack }: Props) => {
+const StepComparePlans = ({ prefs, formData, selectedPlanId, onSelectPlan, onNext, onBack }: Props) => {
+  const { plans: insurancePlans } = useInsurancePlans();
   const [sortBy, setSortBy] = useState<SortKey>("rating");
   const [aiVerdict, setAiVerdict] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiRanking, setAiRanking] = useState<string[]>([]);
+  const [healthRecommendation, setHealthRecommendation] = useState<HealthRecommendation | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
 
   const filtered = useMemo(() => {
     let results = insurancePlans.filter(p =>
@@ -47,7 +61,7 @@ const StepComparePlans = ({ prefs, selectedPlanId, onSelectPlan, onNext, onBack 
       });
     }
 
-    if (sortBy === "ai" && aiRanking.length > 0) {
+    if ((sortBy === "ai" || sortBy === "health") && aiRanking.length > 0) {
       results = [...results].sort((a, b) => {
         const aIdx = aiRanking.indexOf(a.id);
         const bIdx = aiRanking.indexOf(b.id);
@@ -102,6 +116,69 @@ const StepComparePlans = ({ prefs, selectedPlanId, onSelectPlan, onNext, onBack 
     }
   };
 
+  const getHealthBasedRecommendation = async () => {
+    if (!formData) return;
+    
+    setHealthLoading(true);
+    setHealthRecommendation(null);
+    try {
+      const planSummaries = insurancePlans.map(p =>
+        `ID: ${p.id}, Name: ${p.name} by ${p.insurer}, Premium: ₹${p.premium}/mo, Coverage: ${p.coverageLabel}, PED Wait: ${p.pedWait} yrs, Claim Ratio: ${p.claimRatio}%, Features: ${p.features.join(", ")}`
+      ).join("\n");
+
+      const isFamilyCoverage = formData.coverageType === "family";
+      const dependentAges = formData.dependentAges ? formData.dependentAges.split(",").map(a => parseInt(a.trim())).filter(a => !isNaN(a)) : [];
+      const hasConditions = formData.hasPreExistingConditions;
+
+      const result = await askClaudeJSON<HealthRecommendation>(
+        `You are an expert AI health insurance advisor for India. Analyze this user's health profile and provide personalized recommendations.
+         Return ONLY valid JSON with:
+         - ranking: array of TOP 5 plan IDs in order of recommendation (best first)
+         - verdict: 2-3 sentence markdown explanation of the top pick based on their health
+         - planType: "family" or "individual" 
+         - typeReason: 1 sentence markdown explanation for family vs individual (e.g., "Family floater recommended because multiple family members have pre-existing conditions")
+         - healthFocus: 1 sentence about what health aspects to prioritize`,
+        `User Health Profile:
+         Age: ${formData.age} years
+         Gender: ${formData.gender}
+         BMI: ${formData.bmi} (${formData.bmi < 18.5 ? "Underweight" : formData.bmi < 25 ? "Normal" : formData.bmi < 30 ? "Overweight" : "Obese"})
+         Blood Pressure: ${formData.systolicBP}/${formData.diastolicBP} mmHg
+         Smoker: ${formData.isSmoker ? `Yes (${formData.smokerFrequency})` : "No"}
+         Alcohol: ${formData.alcoholConsumption}
+         Pre-existing Conditions: ${hasConditions ? formData.preExistingConditions.join(", ") : "None"}
+         Condition Details: ${formData.conditionDetails || "N/A"}
+         
+         Family Coverage:
+         Type: ${isFamilyCoverage ? "Family" : "Individual"}
+         ${isFamilyCoverage ? `Number of Dependents: ${dependentAges.length}\nDependent Ages: ${formData.dependentAges}` : ""}
+         
+         Coverage Preferences:
+         Desired Coverage: ₹${formData.desiredSumInsured} Lakhs
+         Budget: ₹${prefs.maxPremium}/month
+         Max PED Wait: ${prefs.maxPedWait} years
+         
+         Available Plans:
+         ${planSummaries}`
+      );
+      setHealthRecommendation(result);
+      setAiRanking(result.ranking);
+      setSortBy("health");
+    } catch (error) {
+      console.error("Error getting health recommendation:", error);
+      setHealthRecommendation({
+        ranking: ["mediguard-plus", "wellnessfirst-gold", "familycare-pro"],
+        verdict: "Based on your health profile, prioritize plans with strong pre-existing disease coverage and high claim settlement ratios.",
+        planType: formData.coverageType === "family" ? "family" : "individual",
+        typeReason: formData.coverageType === "family" ? "Family floater provides better cost coverage for multiple family members" : "Individual plan offers personalized coverage for your specific needs",
+        healthFocus: "Look for plans with quick PED coverage and comprehensive health benefits"
+      });
+      setAiRanking(["mediguard-plus", "wellnessfirst-gold", "familycare-pro"]);
+      setSortBy("health");
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
   return (
     <motion.div key="step-compare" {...fadeVariants} transition={{ duration: 0.3 }}>
       <div className="flex items-center justify-between mb-4">
@@ -112,6 +189,7 @@ const StepComparePlans = ({ prefs, selectedPlanId, onSelectPlan, onNext, onBack 
         <Select value={sortBy} onValueChange={v => setSortBy(v as SortKey)}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
+            {formData && <SelectItem value="health">🏥 Health Analysis</SelectItem>}
             <SelectItem value="ai">🤖 AI Ranked</SelectItem>
             <SelectItem value="rating">Rating</SelectItem>
             <SelectItem value="premium">Premium (Low)</SelectItem>
@@ -120,6 +198,63 @@ const StepComparePlans = ({ prefs, selectedPlanId, onSelectPlan, onNext, onBack 
           </SelectContent>
         </Select>
       </div>
+
+      {/* Health-Based Recommendation */}
+      {formData && (
+        <div className="mb-4 p-4 bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center">
+                <AlertCircle className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <span className="text-sm text-emerald-900 dark:text-emerald-100 flex items-center gap-1 font-medium">
+                  Personalized Health Analysis
+                </span>
+                <p className="text-xs text-emerald-700 dark:text-emerald-200 mt-0.5">Get AI recommendation based on your health profile</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={getHealthBasedRecommendation} disabled={healthLoading} className="gap-1 h-7 text-xs">
+              {healthLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+              {healthLoading ? "Analyzing…" : "Analyze Health"}
+            </Button>
+          </div>
+          {healthRecommendation && (
+            <div className="mt-4 space-y-3">
+              {/* Plan Type Recommendation */}
+              <div className="bg-white dark:bg-slate-900 rounded-lg p-3 border border-emerald-200 dark:border-emerald-700">
+                <div className="flex items-center gap-2 mb-1">
+                  {healthRecommendation.planType === "family" ? (
+                    <Users className="h-4 w-4 text-emerald-600" />
+                  ) : (
+                    <User className="h-4 w-4 text-emerald-600" />
+                  )}
+                  <p className="text-xs font-semibold text-foreground">
+                    Recommended: {healthRecommendation.planType === "family" ? "Family Floater Plan" : "Individual Plan"}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {healthRecommendation.typeReason}
+                </p>
+              </div>
+
+              {/* Health Focus */}
+              <div className="bg-white dark:bg-slate-900 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">
+                  <span className="font-semibold text-foreground">Health Priority:</span> {healthRecommendation.healthFocus}
+                </p>
+              </div>
+
+              {/* AI Verdict */}
+              <div className="bg-white dark:bg-slate-900 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown>{healthRecommendation.verdict}</ReactMarkdown>
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* AI Recommendation Button */}
       <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -151,7 +286,8 @@ const StepComparePlans = ({ prefs, selectedPlanId, onSelectPlan, onNext, onBack 
               plan={plan}
               selected={selectedPlanId === plan.id}
               onClick={() => onSelectPlan(plan.id)}
-              aiRank={sortBy === "ai" && aiRanking.length > 0 ? idx + 1 : undefined}
+              aiRank={(sortBy === "ai" || sortBy === "health") && aiRanking.length > 0 ? idx + 1 : undefined}
+              isHealthRanked={sortBy === "health"}
             />
           ))}
         </div>
@@ -167,9 +303,9 @@ const StepComparePlans = ({ prefs, selectedPlanId, onSelectPlan, onNext, onBack 
   );
 };
 
-const PlanCard = ({ plan, selected, onClick, aiRank }: { plan: InsurancePlan; selected: boolean; onClick: () => void; aiRank?: number }) => (
+const PlanCard = ({ plan, selected, onClick, aiRank, isHealthRanked }: { plan: InsurancePlan; selected: boolean; onClick: () => void; aiRank?: number; isHealthRanked?: boolean }) => (
   <Card
-    className={`cursor-pointer transition-all hover:shadow-md relative ${selected ? "ring-2 ring-primary" : ""} ${aiRank === 1 ? "border-primary/40" : ""}`}
+    className={`cursor-pointer transition-all hover:shadow-md relative ${selected ? "ring-2 ring-primary" : ""} ${aiRank === 1 ? (isHealthRanked ? "border-emerald-400/40" : "border-primary/40") : ""}`}
     onClick={onClick}
   >
     <CardContent className="p-4">
@@ -179,8 +315,8 @@ const PlanCard = ({ plan, selected, onClick, aiRank }: { plan: InsurancePlan; se
             <h3 className="font-bold text-foreground text-sm truncate">{plan.name}</h3>
             <Badge className={`${plan.badgeColor} text-[10px] px-1.5 py-0 border-0 shrink-0`}>{plan.badge}</Badge>
             {aiRank && aiRank <= 3 && (
-              <Badge className={`text-[10px] px-1.5 py-0 border-0 shrink-0 ${aiRank === 1 ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
-                🤖 #{aiRank} AI
+              <Badge className={`text-[10px] px-1.5 py-0 border-0 shrink-0 ${aiRank === 1 ? (isHealthRanked ? "bg-emerald-600 text-white" : "bg-primary text-primary-foreground") : "bg-secondary text-secondary-foreground"}`}>
+                {isHealthRanked ? "🏥" : "🤖"} #{aiRank}
               </Badge>
             )}
           </div>

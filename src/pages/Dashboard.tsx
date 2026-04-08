@@ -18,6 +18,7 @@ import { useFamilyMembers, usePolicies, useClaims } from "@/hooks/useUserData";
 import { useAIHealthTips } from "@/hooks/useAIFeatures";
 import { useTranslate } from "@/hooks/useTranslate";
 import { askClaude, askClaudeJSON, askClaudeWithSearch } from "@/lib/claude";
+import { addPolicy } from "@/lib/firebase/firestore";
 import ReactMarkdown from "react-markdown";
 
 const fadeIn = (delay: number) => ({
@@ -137,7 +138,7 @@ function AIRenewalSection({ policies, familyMembers }: { policies: any[]; family
     setLoading(true);
     try {
       const policyContext = policies.map(p =>
-        `${p.name} by ${p.provider}, ?${p.coverageAmount?.toLocaleString("en-IN")} cover, expires ${p.expiryDate}, status: ${p.status}`
+        `${p.name} by ${p.provider}, ₹${p.coverageAmount?.toLocaleString("en-IN")} cover, expires ${p.expiryDate}, status: ${p.status}`
       ).join("\n");
       const familyContext = familyMembers.map(m =>
         `${m.name} (${m.relation}, age ${m.age ?? "?"}) conditions: ${m.conditions?.join(", ") || "none"}`
@@ -150,8 +151,8 @@ function AIRenewalSection({ policies, familyMembers }: { policies: any[]; family
       setRenewals(result);
     } catch {
       setRenewals(policies.slice(0, 2).map(p => ({
-        policy: `${p.name} � ${p.provider}`,
-        tip: `Review your coverage amount of ?${p.coverageAmount?.toLocaleString("en-IN")} before renewal.`,
+        policy: `${p.name} - ${p.provider}`,
+        tip: `Review your coverage amount of ₹${p.coverageAmount?.toLocaleString("en-IN")} before renewal.`,
         urgency: "medium" as const,
       })));
     } finally {
@@ -260,7 +261,7 @@ const Dashboard = () => {
     { label: t("dashboard.activePolicies", "Active Policies"), value: String(activePolicies.length), icon: Shield, color: "bg-primary", modal: "policies" },
     { label: t("dashboard.familyMembers", "Family Members"), value: String(members.length + 1), icon: Users, color: "bg-accent", modal: "family" },
     { label: t("dashboard.pendingClaims", "Pending Claims"), value: String(pendingClaims.length), icon: Clock, color: "bg-warning", modal: "claims" },
-    { label: t("dashboard.totalCoverage", "Total Coverage"), value: totalCoverage > 0 ? `?${(totalCoverage / 100000).toFixed(1)}L` : "?0", icon: IndianRupee, color: "bg-success", modal: "coverage" },
+    { label: t("dashboard.totalCoverage", "Total Coverage"), value: totalCoverage > 0 ? `₹${(totalCoverage / 100000).toFixed(1)}L` : "0", icon: IndianRupee, color: "bg-success", modal: "coverage" },
   ];
 
   // Personalised AI greeting
@@ -298,53 +299,133 @@ const Dashboard = () => {
     }
   };
 
+  // Add test policy (MediGuard Plus by Star Health)
+  const addTestPolicy = async () => {
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+    
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const expiryDate = new Date();
+      expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+      
+      const policyData = {
+        name: "MediGuard Plus",
+        provider: "Star Health Insurance",
+        policyNumber: `STR-${Date.now().toString().slice(-8)}`,
+        coverageAmount: 500000,
+        premiumAmount: 1850,
+        premiumFrequency: "Annual",
+        startDate: tomorrow.toISOString().split('T')[0],
+        expiryDate: expiryDate.toISOString().split('T')[0],
+        policyType: "Family Floater",
+        status: "Active",
+        // Comprehensive benefits details
+        benefits: {
+          roomRent: "Per policy",
+          subLimits: "Per policy",
+          coPayment: "0-10%",
+          restoration: "Partial",
+          noClaimBonus: "10-50%",
+          ayushCover: "No",
+          maternity: "Covered",
+          pedWaiting: "1 year",
+          claimRatio: "91%",
+          ambulanceCharges: "₹2000",
+          dayCareProcedures: "Covered",
+          domiciliaryCare: "Yes",
+          preHospitalization: "30 days",
+          postHospitalization: "60 days",
+          criticalIllness: "₹100000",
+          accidentalDeathBenefit: "₹500000",
+        },
+        // Additional policy details
+        networkHospitals: 5000,
+        claimsSettlementRatio: "91%",
+        avgClaimsProcessingDays: 5,
+        features: [
+          "Cashless hospitalization",
+          "Worldwide coverage",
+          "No waiting period for accidents",
+          "Free annual health checkup",
+          "Telemedicine consultation",
+        ],
+      };
+
+      console.log("[Dashboard] Adding test policy with data:", policyData);
+      
+      await addPolicy(user.uid, policyData);
+      
+      console.log("[Dashboard] Test policy added successfully, waiting for real-time sync...");
+      
+      toast.success("✅ MediGuard Plus added! Syncing with your profile...", {
+        description: "Features will now show your live policy data in a moment.",
+        duration: 3000,
+      });
+    } catch (error: any) {
+      console.error("[Dashboard] Error adding test policy:", error);
+      toast.error("Failed to add test policy: " + error.message);
+    }
+  };
+
   useEffect(() => { getGreeting(); }, [profile]);
   useEffect(() => { getFitScores(); }, [policies.length]);
 
   return (
-    <div className="space-y-8 max-w-6xl">
+    <div className="space-y-10 max-w-6xl mx-auto w-full">
       {/* Welcome Hero */}
-      <motion.div {...fadeIn(0)} className="green-gradient rounded-2xl p-8 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-4 right-10 w-32 h-32 rounded-full bg-primary-foreground/20" />
-          <div className="absolute bottom-2 right-40 w-20 h-20 rounded-full bg-primary-foreground/10" />
+      <motion.div {...fadeIn(0)} className="bg-gradient-to-r from-emerald-700 to-emerald-800 dark:from-emerald-900 dark:to-emerald-950 rounded-3xl p-10 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-4 right-10 w-32 h-32 rounded-full bg-white/20" />
+          <div className="absolute bottom-2 right-40 w-20 h-20 rounded-full bg-white/10" />
         </div>
         <div className="relative z-10">
-          <h1 className="text-3xl font-bold text-primary-foreground">{t("dashboard.welcomeBack", `Welcome back, ${displayName}!`)} ??</h1>
-          <p className="text-primary-foreground/80 mt-2 text-lg">
+          <h1 className="text-4xl font-bold text-white mb-2">{t("dashboard.welcomeBack", `Welcome back, ${displayName}!`)}</h1>
+          <p className="text-emerald-100 text-lg leading-relaxed max-w-2xl">
             {greetingLoading ? (
-              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> {t("common.generating", "Generating your personalised insight�")}</span>
+              <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> {t("common.generating", "We are here for you!")}</span>
             ) : (
               aiGreeting || t("dashboard.insuranceOverview", "Here's your AI-powered insurance overview for today.")
             )}
           </p>
           {(profile?.city || profile?.state) && (
-            <p className="text-primary-foreground/60 text-sm mt-1">{[profile.city, profile.state].filter(Boolean).join(", ")}</p>
+            <p className="text-emerald-200/80 text-sm mt-3 font-medium">{[profile.city, profile.state].filter(Boolean).join(", ")}</p>
           )}
         </div>
       </motion.div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Section */}
+      <div>
+        <div className="text-sm font-medium tracking-widest text-emerald-700 dark:text-emerald-200 mb-4">01 / OVERVIEW</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {stats.map((stat, i) => (
-          <motion.button key={stat.label} {...fadeIn(i * 0.1)}
-            onClick={() => setOpenModal(stat.modal)}
-            className="bg-card rounded-2xl p-5 card-shadow text-left hover:scale-[1.02] transition-all duration-300 cursor-pointer border-l-4 border-l-accent">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-2xl font-bold text-card-foreground mt-1">{stat.value}</p>
+            <motion.button key={stat.label} {...fadeIn(i * 0.1)}
+              onClick={() => setOpenModal(stat.modal)}
+              className="bg-white dark:bg-slate-900 rounded-2xl p-6 text-left hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer border border-border/50 group">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium tracking-wider">{stat.label}</p>
+                  <p className="text-3xl font-bold text-foreground mt-2">{stat.value}</p>
+                </div>
+                <div className={`${stat.color} w-12 h-12 rounded-xl flex items-center justify-center text-white group-hover:scale-110 transition-transform`}>
+                  <stat.icon className="h-5 w-5" />
+                </div>
               </div>
-              <div className={`${stat.color} w-11 h-11 rounded-xl flex items-center justify-center`}>
-                <stat.icon className="h-5 w-5 text-primary-foreground" />
-              </div>
-            </div>
-          </motion.button>
-        ))}
+            </motion.button>
+          ))}
+        </div>
       </div>
 
-      {/* Health Tips Widget */}
-      {profile && <HealthTipsWidget profile={profile} />}
+      {/* Health Tips Section */}
+      {profile && (
+        <div>
+          <div className="text-sm font-medium tracking-widest text-emerald-700 dark:text-emerald-200 mb-4">02 / INSIGHTS</div>
+          <HealthTipsWidget profile={profile} />
+        </div>
+      )}
 
       {/* Policies modal */}
       <Dialog open={!!openModal} onOpenChange={(o) => !o && setOpenModal(null)}>
@@ -360,7 +441,16 @@ const Dashboard = () => {
           {openModal === "policies" && (
             <div className="space-y-3 mt-2">
               {activePolicies.length === 0 ? (
-                <p className="text-muted-foreground text-sm text-center py-4">No policies added yet. Go to Buy Insurance to add one.</p>
+                <div className="space-y-4 text-center py-4">
+                  <p className="text-muted-foreground text-sm">No policies added yet. Go to Buy Insurance to add one.</p>
+                  <Button 
+                    onClick={addTestPolicy}
+                    className="w-full bg-green-600 hover:bg-green-700 gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Test Policy (MediGuard Plus)
+                  </Button>
+                </div>
               ) : activePolicies.map(p => (
                 <div key={p.id} className="bg-secondary/50 rounded-lg border border-border p-4">
                   <div className="flex justify-between items-start mb-2">
@@ -371,9 +461,9 @@ const Dashboard = () => {
                     <StatusBadge status={p.status} />
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    <span>Coverage: <strong className="text-card-foreground">?{p.coverageAmount?.toLocaleString("en-IN")}</strong></span>
-                    <span>Expires: <strong className="text-card-foreground">{p.expiryDate || "�"}</strong></span>
-                    <span>Premium: <strong className="text-card-foreground">?{p.premiumAmount?.toLocaleString("en-IN")}/{p.premiumFrequency}</strong></span>
+                    <span>Coverage: <strong className="text-card-foreground">₹{p.coverageAmount?.toLocaleString("en-IN")}</strong></span>
+                    <span>Expires: <strong className="text-card-foreground">{p.expiryDate || "—"}</strong></span>
+                    <span>Premium: <strong className="text-card-foreground">₹{p.premiumAmount?.toLocaleString("en-IN")}/{p.premiumFrequency}</strong></span>
                     <span>Type: <strong className="text-card-foreground capitalize">{p.policyType}</strong></span>
                   </div>
                 </div>
@@ -413,7 +503,7 @@ const Dashboard = () => {
                   </div>
                   <p className="font-medium text-card-foreground text-sm">{c.procedureName}</p>
                   <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                    <span>?{c.claimAmount?.toLocaleString("en-IN")}</span>
+                    <span>₹{c.claimAmount?.toLocaleString("en-IN")}</span>
                     <span>{c.hospitalName}</span>
                   </div>
                 </div>
@@ -425,26 +515,28 @@ const Dashboard = () => {
               {policies.map(p => (
                 <div key={p.id} className="flex justify-between p-3 bg-secondary/30 rounded-lg">
                   <span className="text-sm text-card-foreground">{p.name}</span>
-                  <span className="font-bold text-primary">?{p.coverageAmount?.toLocaleString("en-IN")}</span>
+                  <span className="font-bold text-primary">₹{p.coverageAmount?.toLocaleString("en-IN")}</span>
                 </div>
               ))}
               <div className="flex justify-between p-3 bg-primary/10 rounded-lg border border-primary/20">
                 <span className="font-semibold text-card-foreground">Total Coverage</span>
-                <span className="font-bold text-primary text-lg">?{totalCoverage.toLocaleString("en-IN")}</span>
+                <span className="font-bold text-primary text-lg">₹{totalCoverage.toLocaleString("en-IN")}</span>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Future Fit Score */}
-        <motion.div {...fadeIn(0.3)} className="bg-card rounded-2xl p-6 card-shadow border-l-4 border-l-primary">
-          <div className="flex items-center gap-2 mb-4">
-            <Shield className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-card-foreground">AI Future Fit Score</h2>
-            <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full ml-auto">AI</span>
-          </div>
+      <div>
+        <div className="text-sm font-medium tracking-widest text-emerald-700 dark:text-emerald-200 mb-4">03 / ANALYSIS</div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Future Fit Score */}
+          <motion.div {...fadeIn(0.3)} className="bg-white dark:bg-slate-900 rounded-2xl p-7 border border-border/50 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-2 mb-5">
+              <Shield className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
+              <h2 className="text-lg font-semibold text-foreground">Coverage Fit Score</h2>
+              <span className="text-xs bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-200 px-2 py-0.5 rounded-full ml-auto font-medium">AI</span>
+            </div>
           <p className="text-sm text-muted-foreground mb-4">AI-predicted adequacy score based on coverage, age, and health conditions</p>
           {fitLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -469,10 +561,14 @@ const Dashboard = () => {
 
         {/* Live Insurance News */}
         <InsuranceNewsWidget />
+        </div>
       </div>
 
       {/* AI Renewal Recommendations */}
-      <AIRenewalSection policies={policies} familyMembers={members} />
+      <div>
+        <div className="text-sm font-medium tracking-widest text-emerald-700 dark:text-emerald-200 mb-4">04 / RECOMMENDATIONS</div>
+        <AIRenewalSection policies={policies} familyMembers={members} />
+      </div>
     </div>
   );
 };

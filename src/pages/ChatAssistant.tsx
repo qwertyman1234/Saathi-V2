@@ -67,40 +67,40 @@ function buildSystem(lang: Lang, profile: any, members: any[], policies: any[], 
     mr: "नेहमी मराठीत उत्तर द्या. सोपी आणि स्पष्ट भाषा वापरा.",
   }[lang];
 
-  return `You are **Health Insurance Saathi** — a specialised AI advisor for Indian health insurance.
+  return `You're **Health Insurance Saathi** — ${name}'s personal insurance advisor.
 
-## User's Real Data (always reference this)
-- Name: ${name} | City: ${city} | Income: ${income}
+**About ${name}:**
+- Lives in ${city}, income: ${income}
 - Family: ${familyStr}
 
-## Current Policies
+**Current Policies:**
 ${policyStr}
 
-## Pending Claims
+**Pending Claims:**
 ${claimStr}
 
-## Your Strict Domain
-You ONLY answer questions about:
-✅ Indian health insurance (IRDAI regulations, policy terms, claim processes)
-✅ Cashless & reimbursement claims
-✅ Policy comparison, features (PED waiting, restoration, NCB, room rent, copay)
-✅ Coverage gaps and recommendations for this specific family
-✅ Hospital networks, TPAs, cashless hospitals
-✅ Government schemes: PMJAY, state schemes, CGHS, ESIC
-✅ Premium calculations, renewal, porting
-✅ Medical cost estimates for procedures in India
-✅ Insurance documents: discharge summary, claim forms, policy wording
+**Your Job:**
+Answer insurance & health questions related to their coverage:
+1. **Which insurance to take?** → Analyze their needs, recommend plans, compare options based on family, age, income, health conditions
+2. **Policy terms & coverage** → Explain deductibles, co-pay, waiting periods, sub-limits
+3. **Claims & procedures** → How to file, settlement times, document requirements
+4. **Health checkups** → Recommend preventive care based on age, family history, current coverage
+5. **Government schemes** → PMJAY, ESI, other benefits
+6. **Hospital networks** → Coverage areas, cashless facilities
 
-❌ For NON-insurance topics say: "I'm your dedicated health insurance advisor. I can only help with insurance-related questions. What would you like to know about your coverage?"
+For unrelated questions: "I'm your insurance expert—let's focus on your coverage!"
 
-## Response Rules
+**How to Respond:**
 - ${langRule}
-- Reference user's actual policies and family members BY NAME when relevant
-- Use ₹ and Indian number format (₹5,00,000)
-- Be concise (under 200 words) unless asked for detail
-- Use markdown: **bold** key terms, bullet points for lists
-- Cite IRDAI guidelines where applicable
-- Be warm, helpful, and practical`;
+- Use names (e.g., "Great question about your coverage, ${name}!")
+- Be direct & specific (get straight to the answer)
+- For "which insurance?" → List 2-3 specific plan recommendations with ₹ amounts
+- For health checkups → Recommend specific tests (BP, lipids, diabetes screening, etc)
+- Keep under 200 words max
+- Use ₹ format (₹5,00,000)
+- Markdown: **bold** terms, • bullets
+- Friendly, practical, no jargon`;
+
 }
 
 // ── Message bubble ────────────────────────────────────────────────────────────
@@ -151,16 +151,6 @@ function Bubble({ msg, isLast, loading }: { msg: AIMessage; isLast: boolean; loa
   );
 }
 
-// ── Setup banner ──────────────────────────────────────────────────────────────
-function SetupBanner() {
-  return (
-    <div className="mx-1 mb-3 p-3 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-700 rounded-xl text-xs">
-      <p className="font-semibold text-green-800 dark:text-green-200 mb-1">✅ Free OpenRouter AI Active</p>
-      <p className="text-green-700 dark:text-green-300">Your chat is powered by OpenRouter AI with 100+ free models. All features ready!</p>
-    </div>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 const ChatAssistant = () => {
   const { profile }  = useAuth();
@@ -176,7 +166,10 @@ const ChatAssistant = () => {
   const [lastFailed, setLastFailed] = useState<string>("");
 
   const bottomRef = useRef<HTMLDivElement>(null);
-
+  // Log when policies are loaded
+  useEffect(() => {
+    console.log("[ChatAssistant] Policies loaded:", policies.length, "policies", policies);
+  }, [policies]);
   // Build personalised welcome
   const welcome = useCallback((): AIMessage => {
     const firstName = profile?.fullName?.split(" ")[0] || "there";
@@ -219,7 +212,7 @@ const ChatAssistant = () => {
     setLoad(true);
 
     try {
-      const reply = await askAI(t, system);
+      const reply = await askAI(system, t);
       setMsgs(prev => { const u = [...prev]; u[u.length-1] = { role:"assistant", content: reply }; return u; });
       setLoad(false);
     } catch (err: any) {
@@ -237,43 +230,37 @@ const ChatAssistant = () => {
     <div className="max-w-3xl mx-auto flex flex-col" style={{ height: "calc(100vh - 5rem)" }}>
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between pb-3 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow">
-            <Bot className="h-5 w-5 text-primary-foreground" />
+      <div className="flex items-center justify-between pb-4 border-b border-border flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 to-emerald-800 dark:from-emerald-600 dark:to-emerald-700 flex items-center justify-center shadow-md">
+            <Bot className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-foreground leading-tight">Health Insurance Saathi</h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-success" />
-              <span className="text-xs text-muted-foreground">OpenRouter AI (Free)</span>
-            </div>
+            <h1 className="font-bold text-foreground leading-tight text-lg">Health Insurance Saathi</h1>
+            <p className="text-xs text-muted-foreground">AI-powered insurance guidance</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Lang switcher */}
-          <div className="flex gap-1 bg-secondary rounded-lg p-0.5">
+          <div className="flex gap-1 bg-emerald-100/50 dark:bg-emerald-900/30 rounded-lg p-0.5 border border-emerald-200/50 dark:border-emerald-800/30">
             {(["en", "hi", "mr"] as const).map(l => (
               <button key={l} onClick={() => setLang(l)}
                 className={`text-xs px-2.5 py-1 rounded-md transition-colors font-medium ${
                   lang === l
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-emerald-700 dark:bg-emerald-600 text-white shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
                 }`}>
                 {LANGS[l].label}
               </button>
             ))}
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
             onClick={clear} title="Clear chat">
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       </div>
-
-      {/* Setup banner */}
-      <SetupBanner />
 
       {/* ── Messages ── */}
       <div className="flex-1 overflow-y-auto bg-card rounded-2xl border border-border p-4 space-y-3 min-h-0">

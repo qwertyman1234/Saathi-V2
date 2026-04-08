@@ -39,7 +39,7 @@ export default function UserProfile() {
   const initials = form.fullName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="max-w-3xl mx-auto w-full space-y-6">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <h1 className="text-2xl font-bold text-foreground">My Profile</h1>
         <p className="text-muted-foreground mt-1">Manage your personal information and account settings</p>

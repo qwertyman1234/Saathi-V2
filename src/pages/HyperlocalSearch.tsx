@@ -161,7 +161,7 @@ const HyperlocalSearch = () => {
   };
 
   return (
-    <div className="max-w-6xl space-y-6">
+    <div className="max-w-6xl mx-auto w-full space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Hyperlocal Hospital & Plan Finder</h1>
         <p className="text-muted-foreground mt-1 flex items-center gap-1">

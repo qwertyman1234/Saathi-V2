@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Sparkles, User, Loader2, Globe, Search, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,12 @@ const ExplainPolicy = () => {
   const [liveContext, setLiveContext] = useState("");
   const [loading, setLoading] = useState(false);
   const { explanation: aiExplanation, explain, loading: explanationLoading } = useAIPolicyExplainer();
+
+  // Log when policies and family data are loaded
+  useEffect(() => {
+    console.log("[ExplainPolicy] Policies loaded:", policies.length, "policies", policies);
+    console.log("[ExplainPolicy] Family members loaded:", members.length, "members");
+  }, [policies.length, members.length]);
 
   const familyContext = [
     `${profile?.fullName || "User"} (Self${profile?.city ? ", " + profile.city : ""})`,
@@ -139,7 +145,7 @@ Use markdown formatting with clear sections.`,
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-4xl mx-auto w-full space-y-6">
       <h1 className="text-2xl font-bold text-foreground">AI Policy Explainer</h1>
 
       {/* Search any insurance term */}

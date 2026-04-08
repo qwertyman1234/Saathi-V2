@@ -1,7 +1,12 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Users can only access their own folder: /{userId}/...
+    // Users can access files in their vault folder
+    match /vault/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Users can also access files directly in their folder (legacy)
     match /{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }

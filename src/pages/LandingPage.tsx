@@ -88,23 +88,22 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="pt-32 pb-20 px-4">
+      <section className="pt-32 pb-24 px-4">
         <div className="max-w-5xl mx-auto text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 bg-primary/10 text-primary text-sm px-4 py-2 rounded-full mb-6 font-medium">
-            <Sparkles className="h-4 w-4" /> Powered by AI · India's smartest insurance platform
+            className="inline-flex items-center gap-2 bg-emerald-50/80 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200 text-xs px-3 py-1.5 rounded-full mb-8 font-medium tracking-wide">
+            <Sparkles className="h-3.5 w-3.5" /> AI-Powered Health Insurance
           </motion.div>
 
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-6">
-            Health Insurance,{" "}
-            <span className="text-primary">Finally</span>{" "}
-            Made Simple
+            className="text-4xl sm:text-5xl md:text-6xl font-bold text-foreground leading-tight mb-6 tracking-tight">
+            Insurance that grows{" "}
+            <span className="text-emerald-700 dark:text-emerald-200">with intention</span>
           </motion.h1>
 
           <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-            className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-            AI-powered gap analysis, real-time claim tracking, hospital finder, and personalised policy recommendations — all in one place, for Indian families.
+            className="text-base text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            Built for Indian families. AI-powered insights rooted in your actual needs: gap analysis, claim guidance, hospital networks, and personalised recommendations.
           </motion.p>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
@@ -135,23 +134,24 @@ export default function LandingPage() {
       </section>
 
       {/* Stats bar */}
-      <section className="bg-primary py-10 px-4">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-primary-foreground">
+      <section className="bg-gradient-to-r from-emerald-700 to-emerald-800 dark:from-emerald-900 dark:to-emerald-950 py-16 px-4">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 text-center text-emerald-50">
           {stats.map((s, i) => (
             <motion.div key={s.label} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-              <p className="text-3xl font-bold">{s.value}</p>
-              <p className="text-primary-foreground/70 text-sm mt-1">{s.label}</p>
+              <p className="text-4xl font-bold text-emerald-50">{s.value}</p>
+              <p className="text-emerald-200 text-xs mt-2 font-medium tracking-wide">{s.label}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 px-4">
+      <section id="features" className="py-24 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Everything your family needs</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">One platform to manage, compare, and optimise your entire family's health insurance.</p>
+          <div className="text-center mb-16">
+            <div className="text-emerald-700 dark:text-emerald-200 text-sm font-medium tracking-widest mb-3">01 / FEATURES</div>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5 tracking-tight">What we've built for you</h2>
+            <p className="text-muted-foreground text-base max-w-2xl mx-auto leading-relaxed">A complete system designed to grow with your family's insurance needs — intentional, layered, and always reaching toward better coverage.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((f, i) => (
@@ -169,11 +169,12 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section id="how-it-works" className="py-20 px-4 bg-secondary/30">
+      <section id="how-it-works" className="py-24 px-4 bg-emerald-50/50 dark:bg-emerald-950/20">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Get started in 3 minutes</h2>
-            <p className="text-muted-foreground text-lg">No documents needed to start. Just sign up and explore.</p>
+          <div className="text-center mb-16">
+            <div className="text-emerald-700 dark:text-emerald-200 text-sm font-medium tracking-widest mb-3">02 / PROCESS</div>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5 tracking-tight">How we grow your insurance</h2>
+            <p className="text-muted-foreground text-base">A deliberate three-step journey — from understanding your needs to unlocking better coverage and savings.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
@@ -199,10 +200,12 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section id="testimonials" className="py-20 px-4">
+      <section id="testimonials" className="py-24 px-4">
         <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Trusted by Indian families</h2>
+          <div className="text-center mb-16">
+            <div className="text-emerald-700 dark:text-emerald-200 text-sm font-medium tracking-widest mb-3">03 / VOICES</div>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-5 tracking-tight">What families say</h2>
+            <p className="text-muted-foreground text-base max-w-2xl mx-auto">Real insights from families who've found clarity and savings through our platform.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {testimonials.map((t, i) => (
@@ -230,11 +233,11 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 px-4 bg-primary">
-        <div className="max-w-3xl mx-auto text-center text-primary-foreground">
+      <section className="py-24 px-4 bg-gradient-to-r from-emerald-700 to-emerald-800 dark:from-emerald-900 dark:to-emerald-950">
+        <div className="max-w-3xl mx-auto text-center text-emerald-50">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Start protecting your family today</h2>
-            <p className="text-primary-foreground/80 text-lg mb-8">Free forever. No credit card. Setup in 3 minutes.</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight">Let's grow something together</h2>
+            <p className="text-emerald-100 text-base mb-10 leading-relaxed">Whether you're starting from scratch or extending your coverage — we're here to help your family thrive.</p>
             <Link to="/signup">
               <Button size="lg" variant="secondary" className="gap-2 h-13 px-10 text-base">
                 Create Free Account <ArrowRight className="h-5 w-5" />

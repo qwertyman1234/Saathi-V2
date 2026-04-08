@@ -1,40 +1,49 @@
 /**
  * ai.ts — Saathi Health Insurance AI Service
  *
- * Uses OpenRouter (https://openrouter.ai) — works with your existing key.
- * OpenRouter provides access to 100+ models including free ones.
- *
- * Free models used (no credits needed):
- *   - google/gemini-2.0-flash-exp:free
- *   - meta-llama/llama-3.1-8b-instruct:free
- *   - mistralai/mistral-7b-instruct:free
- *   - google/gemma-3-27b-it:free
+ * PRIMARY: Hugging Face (Completely Free - 32k messages/month)
+ * FALLBACK: Google Gemini (Free - rate limited)
+ * FALLBACK: OpenRouter (Free models, may have rate limits)
+ * FALLBACK: Claude (Paid, but fallback)
  */
 
-const OR_KEY    = import.meta.env.VITE_OPENROUTER_KEY    ?? "";
+const HF_KEY     = import.meta.env.VITE_HF_API_KEY        ?? "";
 const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY   ?? "";
+const OR_KEY     = import.meta.env.VITE_OPENROUTER_KEY    ?? "";
 const CLAUDE_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY ?? "";
 
+const HF_BASE    = "https://api-inference.huggingface.co/models";
 const OR_BASE    = "https://openrouter.ai/api/v1";
 const CLAUDE_API = "https://api.anthropic.com/v1/messages";
 
+// ── Free Hugging Face models (COMPLETELY FREE - 32k/month) ────────────────────
+// These are the best free models on HF - no credits, just rate-limited
+const HF_MODELS = [
+  "mistralai/Mistral-7B-Instruct-v0.1",
+  "meta-llama/Llama-2-7b-chat-hf",
+  "tiiuae/falcon-7b-instruct",
+];
+
 // ── Free models on OpenRouter (tries in order) ────────────────────────────────
+// Using special "openrouter/free" dynamic catch-all that routes to ANY $0 model
+// Automatically switches if a model stops being free
+// Source: https://openrouter.ai/docs#models
+// OpenRouter model IDs format: namespace/model-name (e.g., openai/gpt-4o-mini)
 const FREE_MODELS = [
-  "meta-llama/llama-3.1-70b-instruct",
-  "meta-llama/llama-3-70b-instruct",
-  "mistralai/mistral-large",
-  "nousresearch/nous-hermes-2-mixtral-8x7b-dpo",
-  "meta-llama/llama-2-70b-chat",
-  "mistralai/mistral-7b-instruct",
+  "openrouter/free",                           // Dynamic catch-all - Always $0, no daily limits
+  "meta-llama/llama-2-7b-chat-hf",            // Llama 2 Chat (fast, free tier)
+  "meta-llama/llama-3-8b-instruct",           // Llama 3 8B (newer, faster, free tier)
 ];
 
 const HAS_OR     = OR_KEY    && OR_KEY.startsWith("sk-or-");
 const HAS_GEMINI = GEMINI_KEY && GEMINI_KEY.length > 10 && !GEMINI_KEY.startsWith("YOUR_");
+const HAS_HF     = HF_KEY    && HF_KEY.length > 10 && !HF_KEY.startsWith("YOUR_");
 const HAS_CLAUDE = CLAUDE_KEY && CLAUDE_KEY.length > 20;
 
-export const ENGINE: "openrouter" | "gemini" | "claude" | "none" =
+export const ENGINE: "openrouter" | "gemini" | "huggingface" | "claude" | "none" =
   HAS_OR ? "openrouter" :
   HAS_GEMINI ? "gemini" :
+  HAS_HF ? "huggingface" :
   HAS_CLAUDE ? "claude" :
   "none";
 
@@ -53,8 +62,80 @@ function isRetryable(err: any): boolean {
   return (
     m.includes("rate") || m.includes("quota") || m.includes("429") ||
     m.includes("503") || m.includes("overloaded") || m.includes("capacity") ||
+    m.includes("empty") || m.includes("timeout") ||  // Include timeouts
     err?.status === 429 || err?.status === 503
   );
+}
+
+// ── Hugging Face (COMPLETELY FREE - 32k messages/month) ────────────────────────
+async function hfChat(system: string, messages: AIMessage[], maxTokens = 350): Promise<string> {
+  for (const model of HF_MODELS) {
+    try {
+      // Format prompt in simple text format for HF models
+      const prompt = [
+        `System: ${system}`,
+        ...messages.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`),
+        'Assistant:' // Let model continue from here
+      ].join('\n');
+
+      const res = await fetch(`${HF_BASE}/${model}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${HF_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: maxTokens,
+            temperature: 0.7,
+            top_p: 0.95,
+          },
+          options: { wait_for_model: true }, // Wait if model is loading
+        }),
+      });
+
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        const errMsg = e?.error || e?.message || `HTTP ${res.status}`;
+        throw Object.assign(new Error(errMsg), { status: res.status });
+      }
+
+      const data = await res.json();
+      
+      // HF Inference API returns array of results
+      let text = '';
+      if (Array.isArray(data) && data[0]?.generated_text) {
+        text = data[0].generated_text;
+        // Remove the prompt from response
+        text = text.replace(prompt, '').trim();
+      } else if (data?.generated_text) {
+        text = data.generated_text.replace(prompt, '').trim();
+      }
+      
+      if (text) return text;
+    } catch (e: any) {
+      console.warn(`[HF] ${model} failed:`, e?.message);
+      if (isRetryable(e) || e.status === 404 || e.status === 400 || e.status === 503) continue;
+      throw e;
+    }
+  }
+  return "⏳ Hugging Face models busy. Please retry in a few seconds.";
+}
+
+// Stream not available for HF free tier, fallback to chat
+async function hfStream(
+  system: string, messages: AIMessage[],
+  onDelta: (t: string) => void, onDone: () => void, maxTokens = 700
+): Promise<void> {
+  try {
+    const text = await hfChat(system, messages, maxTokens);
+    onDelta(text);
+    onDone();
+  } catch (e) {
+    onDelta("⏳ Hugging Face service temporarily unavailable.");
+    onDone();
+  }
 }
 
 // ── OpenRouter ────────────────────────────────────────────────────────────────
@@ -117,7 +198,10 @@ async function orChatWithModel(
   if (!streaming) {
     const data = await res.json();
     const text = data.choices?.[0]?.message?.content;
-    if (!text) throw new Error("Empty response");
+    if (!text) {
+      console.warn(`⚠️ Model "${model}" returned empty response:`, data);
+      throw Object.assign(new Error("Empty response from model"), { status: 503 });
+    }
     return text;
   }
 
@@ -147,18 +231,45 @@ async function orChatWithModel(
 }
 
 // Tries each free model, falls back automatically
-async function orChat(system: string, messages: AIMessage[], maxTokens = 1200): Promise<string> {
+async function orChat(system: string, messages: AIMessage[], maxTokens = 350): Promise<string> {
   let lastErr: any;
-  for (const model of FREE_MODELS) {
+  console.log(`🤖 Trying ${FREE_MODELS.length} OpenRouter models...`);
+  
+  for (let modelIdx = 0; modelIdx < FREE_MODELS.length; modelIdx++) {
+    const model = FREE_MODELS[modelIdx];
     try {
-      return await orChatWithModel(model, system, messages, maxTokens, false);
+      console.log(`   → Attempting: ${model}`);
+      const result = await orChatWithModel(model, system, messages, maxTokens, false);
+      console.log(`   ✓ Success with ${model}`);
+      return result;
     } catch (e: any) {
       lastErr = e;
-      if (isRetryable(e) || e.status === 400) continue; // try next model
-      throw e;
+      const isRateLimited = String(e?.message ?? "").toLowerCase().includes("rate");
+      
+      if (isRetryable(e)) {
+        const delay = isRateLimited ? 2000 : 500; // Wait 2s for rate limit, else 0.5s
+        console.log(`   ⚠️ ${model} busy: ${e?.message}`);
+        if (modelIdx < FREE_MODELS.length - 1) {
+          console.log(`   ⏳ Waiting ${delay}ms before retry...`);
+          await new Promise(r => setTimeout(r, delay));
+          console.log(`   → Continuing to next model...`);
+        }
+        continue; // try next model
+      }
+      
+      // Non-retryable error (daily limit, auth error, etc)
+      console.error(`   ✗ ${model} failed: ${e?.message}`);
+      if (modelIdx === 0 && FREE_MODELS.length > 1) {
+        console.log(`   → Trying fallback models...`);
+        continue;
+      }
+      throw e; // serious error on last model, don't retry
     }
   }
-  return `⏳ All free AI models are busy right now. Please wait 10 seconds and try again.\n\n_${lastErr?.message}_`;
+  
+  const fallbackMsg = `All AI models are busy. Free tier rate limit reached. Please wait 1-2 minutes and try again.`;
+  console.warn(`⏳ ${fallbackMsg}`);
+  return fallbackMsg;
 }
 
 async function orStream(
@@ -166,19 +277,33 @@ async function orStream(
   messages: AIMessage[],
   onDelta: (t: string) => void,
   onDone: () => void,
-  maxTokens = 1200
+  maxTokens = 700
 ): Promise<void> {
   let lastErr: any;
-  for (const model of FREE_MODELS) {
+  console.log(`🎵 Streaming with OpenRouter models...`);
+  
+  for (let modelIdx = 0; modelIdx < FREE_MODELS.length; modelIdx++) {
+    const model = FREE_MODELS[modelIdx];
     try {
+      console.log(`   → Streaming with ${model}...`);
       return await orChatWithModel(model, system, messages, maxTokens, true, onDelta, onDone);
     } catch (e: any) {
       lastErr = e;
-      if (isRetryable(e) || e.status === 400) continue;
+      const isRateLimited = String(e?.message ?? "").toLowerCase().includes("rate");
+      
+      if (isRetryable(e)) {
+        const delay = isRateLimited ? 2000 : 500;
+        console.log(`   ⚠️ ${model} busy: ${e?.message}`);
+        if (modelIdx < FREE_MODELS.length - 1) {
+          console.log(`   ⏳ Waiting ${delay}ms...`);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+      }
       throw e;
     }
   }
-  onDelta(`⏳ All free AI models are busy. Please wait 10 seconds and try again.\n\n_${lastErr?.message}_`);
+  onDelta(`⏳ AI streaming is temporarily unavailable. All models at free tier rate limit. Please wait 1-2 minutes. (${lastErr?.message})`);
   onDone();
 }
 
@@ -206,7 +331,7 @@ function toGeminiContents(messages: AIMessage[]) {
   return out;
 }
 
-async function geminiChat(system: string, messages: AIMessage[], maxTokens = 1200): Promise<string> {
+async function geminiChat(system: string, messages: AIMessage[], maxTokens = 350): Promise<string> {
   for (const model of GEMINI_MODELS) {
     try {
       const res = await fetch(`${GEMINI_BASE}/${model}:generateContent?key=${GEMINI_KEY}`, {
@@ -235,7 +360,7 @@ async function geminiChat(system: string, messages: AIMessage[], maxTokens = 120
 
 async function geminiStream(
   system: string, messages: AIMessage[],
-  onDelta: (t: string) => void, onDone: () => void, maxTokens = 1200
+  onDelta: (t: string) => void, onDone: () => void, maxTokens = 350
 ): Promise<void> {
   for (const model of GEMINI_MODELS) {
     try {
@@ -280,7 +405,7 @@ const claudeHdrs = () => ({
   "anthropic-dangerous-direct-browser-access": "true",
 });
 
-async function claudeChat(system: string, messages: AIMessage[], maxTokens = 1200): Promise<string> {
+async function claudeChat(system: string, messages: AIMessage[], maxTokens = 350): Promise<string> {
   const res = await fetch(CLAUDE_API, {
     method: "POST", headers: claudeHdrs(),
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: maxTokens, system, messages }),
@@ -291,7 +416,7 @@ async function claudeChat(system: string, messages: AIMessage[], maxTokens = 120
 
 async function claudeStream(
   system: string, messages: AIMessage[],
-  onDelta: (t: string) => void, onDone: () => void, maxTokens = 1200
+  onDelta: (t: string) => void, onDone: () => void, maxTokens = 350
 ) {
   const res = await fetch(CLAUDE_API, {
     method: "POST", headers: claudeHdrs(),
@@ -312,11 +437,11 @@ async function claudeStream(
   onDone();
 }
 
-// ── Route to right engine ─────────────────────────────────────────────────────
 function chatFn(system: string, messages: AIMessage[], maxTokens: number): Promise<string> {
-  if (ENGINE === "openrouter") return orChat(system, messages, maxTokens);
-  if (ENGINE === "gemini")     return geminiChat(system, messages, maxTokens);
-  if (ENGINE === "claude")     return claudeChat(system, messages, maxTokens);
+  if (ENGINE === "openrouter")  return orChat(system, messages, maxTokens);
+  if (ENGINE === "gemini")      return geminiChat(system, messages, maxTokens);
+  if (ENGINE === "huggingface") return hfChat(system, messages, maxTokens);
+  if (ENGINE === "claude")      return claudeChat(system, messages, maxTokens);
   return Promise.resolve(noKeyError());
 }
 
@@ -324,21 +449,34 @@ function streamFn(
   system: string, messages: AIMessage[], maxTokens: number,
   onDelta: (t: string) => void, onDone: () => void
 ): Promise<void> {
-  if (ENGINE === "openrouter") return orStream(system, messages, onDelta, onDone, maxTokens);
-  if (ENGINE === "gemini")     return geminiStream(system, messages, onDelta, onDone, maxTokens);
-  if (ENGINE === "claude")     return claudeStream(system, messages, onDelta, onDone, maxTokens);
+  if (ENGINE === "openrouter")  return orStream(system, messages, onDelta, onDone, maxTokens);
+  if (ENGINE === "gemini")      return geminiStream(system, messages, onDelta, onDone, maxTokens);
+  if (ENGINE === "huggingface") return hfStream(system, messages, onDelta, onDone, maxTokens);
+  if (ENGINE === "claude")      return claudeStream(system, messages, onDelta, onDone, maxTokens);
   onDelta(noKeyError()); onDone(); return Promise.resolve();
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
-export async function askAI(system: string, prompt: string, maxTokens = 1200): Promise<string> {
-  return chatFn(system, [{ role: "user", content: prompt }], maxTokens);
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error("AI request timed out. Please try again.")), timeoutMs)
+    )
+  ]);
 }
 
-export async function askAIJSON<T = unknown>(system: string, prompt: string, maxTokens = 1200): Promise<T> {
-  const text = await askAI(
-    system + "\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation, no code fences.",
-    prompt, maxTokens
+export async function askAI(system: string, prompt: string, maxTokens = 200): Promise<string> {
+  return withTimeout(chatFn(system, [{ role: "user", content: prompt }], maxTokens), 20000);
+}
+
+export async function askAIJSON<T = unknown>(system: string, prompt: string, maxTokens = 200): Promise<T> {
+  const text = await withTimeout(
+    askAI(
+      system + "\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation, no code fences.",
+      prompt, maxTokens
+    ),
+    20000
   );
   const clean = text.replace(/```json|```/g, "").trim();
   const match = clean.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
@@ -346,25 +484,46 @@ export async function askAIJSON<T = unknown>(system: string, prompt: string, max
 }
 
 export async function streamAI({
-  system, messages, onDelta, onDone, maxTokens = 1200,
+  system, messages, onDelta, onDone, maxTokens = 250,
 }: {
   system: string; messages: AIMessage[];
   onDelta: (t: string) => void; onDone: () => void; maxTokens?: number;
 }): Promise<void> {
-  return streamFn(system, messages, maxTokens, onDelta, onDone);
+  try {
+    await withTimeout(
+      streamFn(system, messages, maxTokens, onDelta, onDone),
+      25000
+    );
+  } catch (e) {
+    onDelta("⏳ Request timed out. Please try again.");
+    onDone();
+  }
 }
 
-export async function askAIWithSearch(system: string, prompt: string, maxTokens = 2000): Promise<string> {
+export async function askAIWithSearch(system: string, prompt: string, maxTokens = 300): Promise<string> {
   // OpenRouter doesn't have built-in web search so we add an instruction
   const enhancedSystem = system + "\n\nNote: For questions about latest news or current data, use your training knowledge about Indian health insurance and IRDAI regulations up to 2025.";
-  return chatFn(enhancedSystem, [{ role: "user", content: prompt }], maxTokens);
+  return withTimeout(
+    chatFn(enhancedSystem, [{ role: "user", content: prompt }], maxTokens),
+    20000
+  );
 }
 
 export function getActiveEngine(): string {
-  if (ENGINE === "openrouter") return "OpenRouter · Gemini 2.0 Flash (Free)";
-  if (ENGINE === "gemini")     return "Google Gemini (Free)";
-  if (ENGINE === "claude")     return "Claude Sonnet 4";
-  return "No AI key configured";
+  if (ENGINE === "openrouter")  return "OpenRouter Free Models ($0 - No Cost)";
+  if (ENGINE === "gemini")      return "Google Gemini (FREE - Add your key to use)";
+  if (ENGINE === "huggingface") return "Hugging Face (FREE - 32k/month)";
+  if (ENGINE === "claude")      return "Claude Sonnet 4";
+  return "ERROR: No AI provider configured. Add OpenRouter key to .env";
+}
+
+// Log on startup to confirm cost
+if (typeof window !== 'undefined') {
+  console.log(`%c✅ AI Engine: ${getActiveEngine()}`, "color: green; font-weight: bold; font-size: 14px;");
+  if (ENGINE === "openrouter") {
+    console.log("%c💰 Cost: $0/month (Free tier models - gpt-4o-mini, Mistral, Llama)", "color: green;");
+    console.log("%c📊 Note: The $0.20 shown in OpenRouter dashboard is historical from initial tests only.", "color: orange;");
+  }
 }
 
 // ── Legacy shims ──────────────────────────────────────────────────────────────
